@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ USER & AUTH ============
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String    @unique
+  email         String    @unique
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  creditAccount CreditAccount?
+  actions       ActionLog[]
+}
+
+model CreditAccount {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  balance       Int       @default(0) // Credits (integer units)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  transactions  CreditTransaction[]
+}
+
+model CreditTransaction {
+  id          String          @id @default(cuid())
+  accountId   String
+  account     CreditAccount   @relation(fields: [accountId], references: [id])
+  amount      Int             // positive = credit, negative = debit
+  type        CreditTxType
+  description String?
+  createdAt   DateTime        @default(now())
+}
+
+enum CreditTxType {
+  TOP_UP
+  PURCHASE
+  ACTION_DEDUCT
+  REFUND
+  BONUS
+}
+
+// ============ ACTIONS & USAGE (User sees) ============
+model ActionLog {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  skill       String    // e.g., "copywriting", "ai-seo"
+  actionType  String    // e.g., "generate_ad", "optimize_content"
+  inputTokens Int       @default(0)
+  outputTokens Int      @default(0)
+  creditsUsed Int       @default(0)
+  createdAt   DateTime  @default(now())
+}
+
+// ============ BILLING & COSTS (Boss only - hidden from users) ============
+model TokenLog {
+  id            String    @id @default(cuid())
+  userId        String
+  skill         String
+  actionType    String
+  model         String
+  inputTokens   Int
+  outputTokens  Int
+  inputCostUsd  Decimal   @db.Decimal(10, 6)
+  outputCostUsd Decimal   @db.Decimal(10, 6)
+  totalCostUsd  Decimal   @db.Decimal(10, 6)
+  userPaidUsd   Decimal   @db.Decimal(10, 6) // What user was charged
+  marginUsd     Decimal   @db.Decimal(10, 6) // Profit
+  createdAt     DateTime  @default(now())
+}
+
+model MarginSummary {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  totalRevenueUsd Decimal @db.Decimal(10, 4)
+  totalCostUsd    Decimal @db.Decimal(10, 4)
+  totalMarginUsd  Decimal @db.Decimal(10, 4)
+  totalTokens     Int
+  actionCount    Int
+  updatedAt      DateTime @updatedAt
+
+  @@unique([date])
+}

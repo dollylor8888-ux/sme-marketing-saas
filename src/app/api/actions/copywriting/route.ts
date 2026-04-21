@@ -49,6 +49,8 @@ export async function POST(req: NextRequest) {
       extra,
     });
 
+    console.log("[DEBUG copywriting] result:", JSON.stringify(result));
+
     await deductCredits(user.id, CREDITS_PER_COPY, `Copywriting: ${type}`);
     const newBalance = await getCreditBalance(user.id);
 

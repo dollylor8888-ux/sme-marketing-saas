@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { Coins, Loader2 } from "lucide-react";
 
+// Force dynamic rendering
+export const dynamic = "force-dynamic";
+
 type SeoTask = "optimize_content" | "meta_tags" | "schema_markup" | "keyword_research" | "content_audit";
 
 const SEO_TASKS: { value: SeoTask; label: string; icon: string }[] = [

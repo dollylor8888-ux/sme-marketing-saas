@@ -1,20 +1,12 @@
 /**
  * Boss Layout — Protected admin route
- * Requires BOSS_SECRET_KEY header for access
+ * Access via /boss — prompts for BOSS_SECRET_KEY
  */
 
-import { NextRequest, NextResponse } from "next/server";
-
-export async function middleware(req: NextRequest) {
-  const bossKey = req.headers.get("x-boss-key");
-
-  if (bossKey !== process.env.BOSS_SECRET_KEY) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  return NextResponse.next();
+export default function BossLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-slate-950">
+      {children}
+    </div>
+  );
 }
-
-export const config = {
-  matcher: ["/boss(.*)", "/api/boss(.*)"],
-};

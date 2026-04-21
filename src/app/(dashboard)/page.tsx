@@ -1,12 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { getCreditBalance } from "@/lib/billing/credit-system";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/db/prisma";
 
 export default async function DashboardPage() {
   const { userId: clerkId } = await auth();
-  if (!clerkId) return null;
+  if (!clerkId) {
+    redirect("/sign-in");
+  }
 
   const user = await prisma.user.findUnique({ where: { clerkId } });
   const balance = user ? await getCreditBalance(user.id) : 0;

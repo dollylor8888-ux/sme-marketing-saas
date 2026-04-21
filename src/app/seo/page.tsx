@@ -17,7 +17,19 @@ const SEO_TASKS: { value: SeoTask; label: string; icon: string }[] = [
 const LANGUAGES = ["English", "Traditional Chinese", "Simplified Chinese", "Cantonese"];
 
 export default function SeoPage() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, isLoaded } = useAuth();
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   const [task, setTask] = useState<SeoTask>("optimize_content");
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");

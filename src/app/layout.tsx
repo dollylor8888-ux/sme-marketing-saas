@@ -30,6 +30,8 @@ export default function RootLayout({
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
+      clerkJSUrl="https://magnetic-mutt-83.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+      clerkJSVersion="6"
     >
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

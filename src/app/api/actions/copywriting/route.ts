@@ -51,15 +51,24 @@ export async function POST(req: NextRequest) {
 
     console.log("[DEBUG copywriting] result:", JSON.stringify(result));
 
+    // Always deduct credits even if generateCopy "succeeds" but returns no content
     await deductCredits(user.id, CREDITS_PER_COPY, `Copywriting: ${type}`);
     const newBalance = await getCreditBalance(user.id);
 
-    return NextResponse.json({
-      content: result.output?.copy,
-      variants: result.output?.variants,
+    const response: Record<string, unknown> = {
       creditsUsed: CREDITS_PER_COPY,
       newBalance,
-    });
+    };
+    if (result.output) {
+      response.content = result.output.copy;
+      response.variants = result.output.variants;
+      response.error = result.output.error;
+      response.success = result.output.success;
+    }
+    if (result.tokenRecord) {
+      response._debug = { tokens: result.tokenRecord, margin: result.marginRecord };
+    }
+    return NextResponse.json(response);
   } catch (error) {
     console.error("[copywriting POST]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

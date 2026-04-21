@@ -43,7 +43,7 @@ export default async function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid md:grid-cols-2 gap-6">
         <a
-          href="/dashboard/copywriting"
+          href="/copywriting"
           className="p-8 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-xl hover:border-cyan-500/50 transition"
         >
           <div className="text-4xl mb-4">✍️</div>
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
           <p className="text-slate-400">Generate ad copy, emails, social posts, and more</p>
         </a>
         <a
-          href="/dashboard/seo"
+          href="/seo"
           className="p-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl hover:border-green-500/50 transition"
         >
           <div className="text-4xl mb-4">🔍</div>

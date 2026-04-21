@@ -22,25 +22,25 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
         <nav className="space-y-1">
           <Link
-            href="/dashboard"
+            href="/"
             className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition"
           >
             <span>📊</span> Overview
           </Link>
           <Link
-            href="/dashboard/credits"
+            href="/credits"
             className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition"
           >
             <span>💰</span> Credits
           </Link>
           <Link
-            href="/dashboard/copywriting"
+            href="/copywriting"
             className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition"
           >
             <span>✍️</span> Copywriting
           </Link>
           <Link
-            href="/dashboard/seo"
+            href="/seo"
             className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition"
           >
             <span>🔍</span> AI SEO

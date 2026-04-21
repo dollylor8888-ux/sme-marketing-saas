@@ -54,7 +54,7 @@ export default function Home() {
             Start Free — 100 Credits
           </Link>
           <Link
-            href="/dashboard"
+            href="/sign-in"
             className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium text-lg transition border border-slate-700"
           >
             View Demo

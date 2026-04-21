@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import Link from "next/link";
 import { Coins, Loader2 } from "lucide-react";
 
 type SeoTask = "optimize_content" | "meta_tags" | "schema_markup" | "keyword_research" | "content_audit";
@@ -17,207 +17,189 @@ const SEO_TASKS: { value: SeoTask; label: string; icon: string }[] = [
 const LANGUAGES = ["English", "Traditional Chinese", "Simplified Chinese", "Cantonese"];
 
 export default function SeoPage() {
-  const { isSignedIn, getToken, isLoaded } = useAuth();
-
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          <p className="text-slate-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   const [task, setTask] = useState<SeoTask>("optimize_content");
   const [content, setContent] = useState("");
-  const [title, setTitle] = useState("");
-  const [targetKeyword, setTargetKeyword] = useState("");
-  const [url, setUrl] = useState("");
   const [language, setLanguage] = useState("English");
+  const [targetKeyword, setTargetKeyword] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async () => {
-    if (!isSignedIn) {
-      window.location.href = "/sign-in?redirect_url=" + encodeURIComponent("/seo");
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const token = await getToken();
       const res = await fetch("/api/actions/ai-seo", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token || ""}`,
-        },
-        body: JSON.stringify({ task, content, title, targetKeyword, url, language }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task, content, language, targetKeyword }),
+        credentials: "include",
       });
       const data = await res.json();
+
       if (data.error) {
-        setError(data.error);
+        if (data.error === "Unauthorized" || data.error === "No auth token provided") {
+          setError("Please sign in to use this feature");
+        } else {
+          setError(data.error);
+        }
       } else {
-        setResult(data.result);
+        setResult(data.result || data.content || JSON.stringify(data, null, 2));
       }
     } catch {
-      setError("Failed to optimize. Please try again.");
+      setError("Failed to generate SEO content. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white">AI SEO</h1>
-          <p className="text-slate-400 mt-1">Optimize content for AI search engines</p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg">
-          <Coins className="w-4 h-4 text-green-400" />
-          <span className="text-white font-medium">15 credits</span>
-          <span className="text-slate-400 text-sm">per action</span>
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Form */}
-        <div className="space-y-6">
-          {/* Task Type */}
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-3">SEO Task</label>
-            <div className="grid grid-cols-1 gap-2">
-              {SEO_TASKS.map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => setTask(t.value)}
-                  className={`p-3 rounded-lg border text-left transition ${
-                    task === t.value
-                      ? "border-green-500 bg-green-500/10 text-green-400"
-                      : "border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600"
-                  }`}
-                >
-                  <span className="mr-2">{t.icon}</span>
-                  {t.label}
-                </button>
-              ))}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header */}
+      <header className="border-b border-slate-700/50">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center font-bold text-white text-sm">
+              A
             </div>
+            <span className="text-white font-semibold">Arclion</span>
           </div>
+          <Link
+            href="/sign-in?redirect_url=/seo"
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg font-medium transition"
+          >
+            Sign In
+          </Link>
+        </div>
+      </header>
 
-          {/* Title */}
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2">Title / Topic</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Best Wireless Earbuds 2024"
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-green-500"
-            />
-          </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6 py-12">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">AI SEO</h1>
+          <p className="text-slate-400">Optimize your content for AI search engines like Perplexity and ChatGPT</p>
+        </div>
 
-          {/* URL */}
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2">URL (for meta tags/schema)</label>
-            <input
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com/blog/post"
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-green-500"
-            />
-          </div>
-
-          {/* Target Keyword */}
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2">Target Keyword</label>
-            <input
-              type="text"
-              value={targetKeyword}
-              onChange={(e) => setTargetKeyword(e.target.value)}
-              placeholder="e.g., wireless earbuds"
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-green-500"
-            />
-          </div>
-
-          {/* Content (for optimize/audit) */}
-          {(task === "optimize_content" || task === "content_audit") && (
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Form */}
+          <div className="space-y-6">
+            {/* Task Type */}
             <div>
-              <label className="block text-slate-300 text-sm font-medium mb-2">Content to Optimize</label>
+              <label className="block text-slate-300 text-sm font-medium mb-3">SEO Task</label>
+              <div className="grid grid-cols-2 gap-2">
+                {SEO_TASKS.map((t) => (
+                  <button
+                    key={t.value}
+                    onClick={() => setTask(t.value)}
+                    className={`p-3 rounded-lg border text-left transition ${
+                      task === t.value
+                        ? "border-cyan-500 bg-cyan-500/10 text-cyan-400"
+                        : "border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600"
+                    }`}
+                  >
+                    <span className="mr-2">{t.icon}</span>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Target Keyword */}
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Target Keyword (optional)</label>
+              <input
+                type="text"
+                value={targetKeyword}
+                onChange={(e) => setTargetKeyword(e.target.value)}
+                placeholder="e.g., wireless earbuds review"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            {/* Language */}
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Language</label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Content */}
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">
+                {task === "keyword_research" ? "Seed Keywords / Topic" : "Content to Optimize"}
+              </label>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Paste your content here..."
-                rows={6}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-green-500 resize-none"
+                placeholder={
+                  task === "keyword_research"
+                    ? "Enter a seed keyword or topic..."
+                    : "Paste your content here..."
+                }
+                rows={8}
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 resize-none"
               />
             </div>
-          )}
 
-          {/* Language */}
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2">Language</label>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-green-500"
+            <button
+              onClick={handleGenerate}
+              disabled={loading}
+              className="w-full py-4 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition flex items-center justify-center gap-2"
             >
-              {LANGUAGES.map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={handleGenerate}
-            disabled={loading}
-            className="w-full py-4 bg-green-500 hover:bg-green-400 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Optimizing...
-              </>
-            ) : (
-              <>Run SEO Analysis</>
-            )}
-          </button>
-
-          {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* Result */}
-        <div>
-          <div className="sticky top-8">
-            <div className="p-6 bg-slate-800 border border-slate-700 rounded-xl min-h-[400px]">
-              <h3 className="text-slate-300 font-medium mb-4">SEO Recommendations</h3>
-              {result ? (
-                <pre className="text-white whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                  {result}
-                </pre>
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Generating...
+                </>
               ) : (
-                <div className="h-[350px] flex items-center justify-center text-slate-500">
-                  <div className="text-center">
-                    <div className="text-4xl mb-4">🔍</div>
-                    <p>Your SEO recommendations will appear here</p>
-                  </div>
-                </div>
+                <>Generate SEO Content</>
               )}
+            </button>
+
+            {error && (
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-red-400 text-sm mb-2">{error}</p>
+                <Link
+                  href="/sign-in?redirect_url=/seo"
+                  className="text-cyan-400 hover:text-cyan-300 text-sm font-medium"
+                >
+                  Sign in to continue →
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Result */}
+          <div>
+            <div className="sticky top-8">
+              <div className="p-6 bg-slate-800 border border-slate-700 rounded-xl min-h-[400px]">
+                <h3 className="text-slate-300 font-medium mb-4">Generated Result</h3>
+                {result ? (
+                  <pre className="text-white whitespace-pre-wrap font-sans text-sm leading-relaxed overflow-auto">
+                    {result}
+                  </pre>
+                ) : (
+                  <div className="h-[350px] flex items-center justify-center text-slate-500">
+                    <div className="text-center">
+                      <div className="text-4xl mb-4">🔍</div>
+                      <p>Your SEO results will appear here</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

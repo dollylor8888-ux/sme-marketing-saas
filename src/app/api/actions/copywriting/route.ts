@@ -1,16 +1,16 @@
 /**
  * Copywriting API Route
  * POST /api/actions/copywriting
- * Auth: Clerk session token passed from client via Authorization header
+ * Auth: Clerk session token from header or cookie
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { generateCopy, CopywritingInput } from "@/lib/skills/copywriting";
-import { deductCredits } from "@/lib/billing/credit-system";
-import { SkillCreditCost } from "@/lib/billing/models";
-import { prisma } from "@/lib/billing/credit-system";
+import { prisma, getCreditBalance, deductCredits } from "@/lib/billing/credit-system";
 
-async function verifyClerkToken(token: string): Promise<string | null> {
+const CREDITS_PER_COPY = 10;
+
+async function verifyClerkSession(token: string): Promise<string | null> {
   try {
     const res = await fetch("https://api.clerk.dev/v1/sessions/verify", {
       method: "POST",
@@ -20,7 +20,6 @@ async function verifyClerkToken(token: string): Promise<string | null> {
       },
       body: JSON.stringify({ token }),
     });
-
     if (!res.ok) return null;
     const data = await res.json();
     return data.user_id || null;
@@ -29,88 +28,54 @@ async function verifyClerkToken(token: string): Promise<string | null> {
   }
 }
 
+async function getClerkUserIdFromRequest(req: NextRequest): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const userId = await verifyClerkSession(token);
+    if (userId) return userId;
+  }
+
+  const cookies = req.headers.get("Cookie") || "";
+  const sessionCookie = cookies.match(/__session=([^;]+)/)?.[1];
+  if (sessionCookie) {
+    return await verifyClerkSession(sessionCookie);
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.replace("Bearer ", "");
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const clerkId = await verifyClerkToken(token);
+    const clerkId = await getClerkUserIdFromRequest(req);
     if (!clerkId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body: CopywritingInput = await req.json();
-    if (!body.type) {
-      return NextResponse.json({ error: "Missing required field: type" }, { status: 400 });
-    }
+    const { type, product, brand, audience, tone, language, extra } = body;
 
-    // Get user from DB
+    // Get user
     const user = await prisma.user.findUnique({ where: { clerkId } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const creditCost = SkillCreditCost["copywriting"] ?? 10;
-
-    // Check and deduct credits
-    const deduction = await deductCredits(user.id, creditCost, `Copywriting: ${body.type}`);
+    // Check and deduct credits atomically
+    const deduction = await deductCredits(user.id, CREDITS_PER_COPY, `Copywriting: ${type}`);
     if (!deduction.success) {
       return NextResponse.json(
-        { error: "Insufficient credits", remaining: deduction.remaining, required: creditCost },
+        { error: "Insufficient credits", required: CREDITS_PER_COPY, current: deduction.remaining },
         { status: 402 }
       );
     }
 
-    // Call the copywriting skill
-    const result = await generateCopy(body);
+    // Generate copy
+    const result = await generateCopy({ type, product, brand, audience, tone, language, extra });
 
-    if (!result.output.success) {
-      // Refund credits on failure
-      await deductCredits(user.id, -creditCost, `Refund: ${body.type} failed`);
-      return NextResponse.json({ error: result.output.error }, { status: 500 });
-    }
-
-    // Log tokens + margins (hidden from user)
-    if (result.tokenRecord && result.marginRecord) {
-      await prisma.tokenLog.create({
-        data: {
-          userId: user.id,
-          skill: result.tokenRecord.skill,
-          actionType: result.tokenRecord.actionType,
-          model: result.tokenRecord.model,
-          inputTokens: result.tokenRecord.inputTokens,
-          outputTokens: result.tokenRecord.outputTokens,
-          inputCostUsd: result.marginRecord.apiCostUsd / 2,
-          outputCostUsd: result.marginRecord.apiCostUsd / 2,
-          totalCostUsd: result.marginRecord.apiCostUsd,
-          userPaidUsd: result.marginRecord.userPaidUsd,
-          marginUsd: result.marginRecord.marginUsd,
-        },
-      });
-
-      await prisma.actionLog.create({
-        data: {
-          userId: user.id,
-          skill: "copywriting",
-          actionType: body.type,
-          inputTokens: result.tokenRecord.inputTokens,
-          outputTokens: result.tokenRecord.outputTokens,
-          creditsUsed: creditCost,
-        },
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      copy: result.output.copy,
-      remaining: deduction.remaining,
-    });
+    return NextResponse.json({ copy: result.output?.copy || result.output || result });
   } catch (error) {
-    console.error("[copywriting]", error);
+    console.error("[copywriting POST]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

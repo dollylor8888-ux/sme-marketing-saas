@@ -1,7 +1,7 @@
 "use client";
 
-import { useAuth } from "@clerk/clerk-react";
 import { useState } from "react";
+import Link from "next/link";
 import { Coins, Loader2, Copy, Check } from "lucide-react";
 
 type CopyType = "ad_headline" | "ad_description" | "email_subject" | "email_body" | "social_post" | "landing_hero" | "product_description";
@@ -19,17 +19,7 @@ const COPY_TYPES: { value: CopyType; label: string; icon: string }[] = [
 const LANGUAGES = ["English", "Traditional Chinese", "Simplified Chinese", "Cantonese"];
 const TONES = ["Professional", "Friendly", "Casual", "Luxury", "Urgent", "Playful"];
 
-function LoadingFallback() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-      <div className="text-cyan-400">Loading...</div>
-    </div>
-  );
-}
-
-export default function CopywritingClient() {
-  const { isSignedIn, getToken, isLoaded } = useAuth();
-
+export default function CopywritingPage() {
   const [type, setType] = useState<CopyType>("ad_headline");
   const [product, setProduct] = useState("");
   const [brand, setBrand] = useState("");
@@ -42,41 +32,26 @@ export default function CopywritingClient() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Handle loading state - show spinner until Clerk is ready
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          <p className="text-slate-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   const handleGenerate = async () => {
-    if (!isSignedIn) {
-      window.location.href = "/sign-in?redirect_url=" + encodeURIComponent("/copywriting");
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const token = await getToken();
       const res = await fetch("/api/actions/copywriting", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token || ""}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type, product, brand, audience, tone, language, extra }),
+        credentials: "include",
       });
       const data = await res.json();
+
       if (data.error) {
-        setError(data.error);
+        if (data.error === "Unauthorized" || data.error === "No auth token provided") {
+          setError("Please sign in to use this feature");
+        } else {
+          setError(data.error);
+        }
       } else {
         setResult(data.copy);
       }
@@ -97,7 +72,7 @@ export default function CopywritingClient() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Simple Header */}
+      {/* Header */}
       <header className="border-b border-slate-700/50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -106,11 +81,12 @@ export default function CopywritingClient() {
             </div>
             <span className="text-white font-semibold">Arclion</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg">
-            <Coins className="w-4 h-4 text-cyan-400" />
-            <span className="text-white font-medium">10 credits</span>
-            <span className="text-slate-400 text-sm">per action</span>
-          </div>
+          <Link
+            href="/sign-in?redirect_url=/copywriting"
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg font-medium transition"
+          >
+            Sign In
+          </Link>
         </div>
       </header>
 
@@ -234,8 +210,14 @@ export default function CopywritingClient() {
             </button>
 
             {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                {error}
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-red-400 text-sm mb-2">{error}</p>
+                <Link
+                  href="/sign-in?redirect_url=/copywriting"
+                  className="text-cyan-400 hover:text-cyan-300 text-sm font-medium"
+                >
+                  Sign in to continue →
+                </Link>
               </div>
             )}
           </div>

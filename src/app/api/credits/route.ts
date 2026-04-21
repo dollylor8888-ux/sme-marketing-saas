@@ -11,7 +11,7 @@ import { prisma } from "@/lib/billing/credit-system";
 
 async function verifyClerkToken(token: string): Promise<string | null> {
   try {
-    const res = await fetch("https://api.clerk.dev/v1/sessions/verify", {
+    const res = await fetch("https://api.clerk.com/v1/sessions/verify", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,

@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Dashboard routes need Clerk auth (including dashboard API)
+// Dashboard routes need Clerk auth
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
 // Boss API routes need BOSS_SECRET_KEY (not the page itself)

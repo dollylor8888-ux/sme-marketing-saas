@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getCreditBalance } from "@/lib/billing/credit-system";
 import { prisma } from "@/lib/billing/credit-system";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const { userId: clerkId } = await auth();
   if (!clerkId) {
@@ -12,7 +14,6 @@ export default async function DashboardPage() {
   const user = await prisma.user.findUnique({ where: { clerkId } });
   const balance = user ? await getCreditBalance(user.id) : 0;
 
-  // Get recent action count
   const actionCount = user
     ? await prisma.actionLog.count({ where: { userId: user.id } })
     : 0;
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid md:grid-cols-2 gap-6">
         <a
-          href="/copywriting"
+          href="/dashboard/copywriting"
           className="p-8 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-xl hover:border-cyan-500/50 transition"
         >
           <div className="text-4xl mb-4">✍️</div>
@@ -51,7 +52,7 @@ export default async function DashboardPage() {
           <p className="text-slate-400">Generate ad copy, emails, social posts, and more</p>
         </a>
         <a
-          href="/seo"
+          href="/dashboard/seo"
           className="p-8 bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl hover:border-green-500/50 transition"
         >
           <div className="text-4xl mb-4">🔍</div>

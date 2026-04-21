@@ -1,14 +1,6 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-900">
       {/* Sidebar */}
@@ -28,19 +20,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <span>📊</span> Overview
           </Link>
           <Link
-            href="/credits"
+            href="/dashboard/credits"
             className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition"
           >
             <span>💰</span> Credits
           </Link>
           <Link
-            href="/copywriting"
+            href="/dashboard/copywriting"
             className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition"
           >
             <span>✍️</span> Copywriting
           </Link>
           <Link
-            href="/seo"
+            href="/dashboard/seo"
             className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition"
           >
             <span>🔍</span> AI SEO

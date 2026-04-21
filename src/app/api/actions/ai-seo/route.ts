@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     let user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!user) {
       // Auto-create user + credit account on first action
-      const clerkUser = await clerkClient().users.getUser(userId);
+      const clerkUser = await (await clerkClient()).users.getUser(userId);
       const email = clerkUser.emailAddresses[0]?.emailAddress ?? "unknown@unknown.com";
       const name = clerkUser.fullName ?? undefined;
       user = await ensureCreditAccount(userId, email, name);

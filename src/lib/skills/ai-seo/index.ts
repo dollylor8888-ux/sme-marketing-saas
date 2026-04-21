@@ -4,9 +4,9 @@
  */
 
 import { openai, DEFAULT_MODEL } from "../ai-client";
-import { calculateApiCost, TokenRecord } from "../billing/token-tracker";
-import { calculateActionMargin, MarginRecord } from "../billing/margin-calculator";
-import { SkillCreditCost } from "../billing/models";
+import { calculateApiCost, TokenRecord } from "../../billing/token-tracker";
+import { calculateActionMargin, MarginRecord } from "../../billing/margin-calculator";
+import { SkillCreditCost } from "../../billing/models";
 
 export type SeoTask = "optimize_content" | "meta_tags" | "schema_markup" | "keyword_research" | "content_audit";
 

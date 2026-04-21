@@ -206,7 +206,7 @@ export default function BossDashboard() {
                 </thead>
                 <tbody>
                   {daily.map((d) => {
-                    const pct = d.revenue > 0 ? ((d.margin / d.revenue) * 100).toFixed(1) : "0";
+                    const pct = d.totalRevenue > 0 ? ((d.totalMargin / d.totalRevenue) * 100).toFixed(1) : "0";
                     return (
                       <tr key={d.date} className="border-b border-slate-800/50 hover:bg-slate-900/50">
                         <td className="py-3 px-4">{d.date}</td>

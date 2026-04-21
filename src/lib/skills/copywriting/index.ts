@@ -3,12 +3,10 @@
  * User-facing: ads, emails, social posts, landing pages
  */
 
-/**
- * AI Client — Supports OpenAI or MiniMax (OpenAI-compatible API)
- * Set AI_PROVIDER=minimax or openai in env
- */
-
 import OpenAI from "openai";
+import { TokenRecord } from "../../billing/token-tracker";
+import { MarginRecord, calculateActionMargin } from "../../billing/margin-calculator";
+import { SkillCreditCost } from "../../billing/models";
 
 const provider = process.env.AI_PROVIDER ?? "openai";
 

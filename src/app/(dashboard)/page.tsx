@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getCreditBalance } from "@/lib/billing/credit-system";
-import prisma from "@/lib/db/prisma";
+import { prisma } from "@/lib/billing/credit-system";
 
 export default async function DashboardPage() {
   const { userId: clerkId } = await auth();

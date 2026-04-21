@@ -1,54 +1,21 @@
 /**
  * AI SEO API Route
  * POST /api/actions/ai-seo
- * Auth: Clerk session token from header or cookie
+ * Auth: Clerk session via auth() from @clerk/nextjs/server
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { optimizeForSeo, SeoInput } from "@/lib/skills/ai-seo";
-import { prisma, deductCredits } from "@/lib/billing/credit-system";
+import { prisma, deductCredits, getCreditBalance } from "@/lib/billing/credit-system";
 
 const CREDITS_PER_SEO = 10;
 
-async function verifyClerkSession(token: string): Promise<string | null> {
-  try {
-    const res = await fetch("https://api.clerk.com/v1/sessions/verify", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.user_id || null;
-  } catch {
-    return null;
-  }
-}
-
-async function getClerkUserIdFromRequest(req: NextRequest): Promise<string | null> {
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7);
-    const userId = await verifyClerkSession(token);
-    if (userId) return userId;
-  }
-
-  const cookies = req.headers.get("Cookie") || "";
-  const sessionCookie = cookies.match(/__session=([^;]+)/)?.[1];
-  if (sessionCookie) {
-    return await verifyClerkSession(sessionCookie);
-  }
-
-  return null;
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const clerkId = await getClerkUserIdFromRequest(req);
-    if (!clerkId) {
+    const { userId } = await auth();
+
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -56,12 +23,21 @@ export async function POST(req: NextRequest) {
     const { task, content, language, targetKeyword } = body;
 
     // Get user
-    const user = await prisma.user.findUnique({ where: { clerkId } });
+    const user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check and deduct credits atomically
+    // Check balance first
+    const balance = await getCreditBalance(user.id);
+    if (balance < CREDITS_PER_SEO) {
+      return NextResponse.json(
+        { error: "Insufficient credits", required: CREDITS_PER_SEO, balance },
+        { status: 402 }
+      );
+    }
+
+    // Deduct credits
     const deduction = await deductCredits(user.id, CREDITS_PER_SEO, `AI SEO: ${task}`);
     if (!deduction.success) {
       return NextResponse.json(
@@ -72,8 +48,13 @@ export async function POST(req: NextRequest) {
 
     // Generate SEO content
     const seoResult = await optimizeForSeo({ task, content, language, targetKeyword });
+    const newBalance = await getCreditBalance(user.id);
 
-    return NextResponse.json({ result: seoResult.output.result || seoResult });
+    return NextResponse.json({
+      result: seoResult.output?.result || seoResult,
+      creditsUsed: CREDITS_PER_SEO,
+      newBalance,
+    });
   } catch (error) {
     console.error("[ai-seo POST]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

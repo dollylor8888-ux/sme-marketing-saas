@@ -2,6 +2,9 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+// Force dynamic rendering so ClerkProvider context is available
+export const dynamic = "force-dynamic";
+
 const geistSans = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",

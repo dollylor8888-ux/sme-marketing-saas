@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@clerk/clerk-react";
 import { Coins, Loader2, Copy, Check } from "lucide-react";
 
 type CopyType = "ad_headline" | "ad_description" | "email_subject" | "email_body" | "social_post" | "landing_hero" | "product_description";
@@ -19,6 +20,7 @@ const LANGUAGES = ["English", "Traditional Chinese", "Simplified Chinese", "Cant
 const TONES = ["Professional", "Friendly", "Casual", "Luxury", "Urgent", "Playful"];
 
 export default function CopywritingClient() {
+  const { isSignedIn, getToken } = useAuth();
   const [type, setType] = useState<CopyType>("ad_headline");
   const [product, setProduct] = useState("");
   const [brand, setBrand] = useState("");
@@ -32,14 +34,23 @@ export default function CopywritingClient() {
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
+    if (!isSignedIn) {
+      window.location.href = "/sign-in?redirect_url=" + encodeURIComponent("/dashboard/copywriting");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
+      const token = await getToken();
       const res = await fetch("/api/actions/copywriting", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token || ""}`,
+        },
         body: JSON.stringify({ type, product, brand, audience, tone, language, extra }),
       });
       const data = await res.json();

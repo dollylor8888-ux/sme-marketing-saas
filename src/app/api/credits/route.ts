@@ -2,18 +2,42 @@
  * Credits API Route — User facing
  * GET /api/credits (balance)
  * POST /api/credits (top-up)
+ * Auth: Clerk session token from client
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { getCreditBalance, topUpCredits } from "@/lib/billing/credit-system";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/billing/credit-system";
 
-const prisma = new PrismaClient();
-
-export async function GET() {
+async function verifyClerkToken(token: string): Promise<string | null> {
   try {
-    const { userId: clerkId } = await auth();
+    const res = await fetch("https://api.clerk.dev/v1/sessions/verify", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.user_id || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.replace("Bearer ", "");
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const clerkId = await verifyClerkToken(token);
     if (!clerkId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -33,7 +57,14 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.replace("Bearer ", "");
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const clerkId = await verifyClerkToken(token);
     if (!clerkId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

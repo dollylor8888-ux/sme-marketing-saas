@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@clerk/clerk-react";
 import { Coins, Loader2 } from "lucide-react";
-
-// Force dynamic rendering
-export const dynamic = "force-dynamic";
 
 type SeoTask = "optimize_content" | "meta_tags" | "schema_markup" | "keyword_research" | "content_audit";
 
@@ -19,6 +17,7 @@ const SEO_TASKS: { value: SeoTask; label: string; icon: string }[] = [
 const LANGUAGES = ["English", "Traditional Chinese", "Simplified Chinese", "Cantonese"];
 
 export default function SeoPage() {
+  const { isSignedIn, getToken } = useAuth();
   const [task, setTask] = useState<SeoTask>("optimize_content");
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
@@ -30,14 +29,23 @@ export default function SeoPage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async () => {
+    if (!isSignedIn) {
+      window.location.href = "/sign-in?redirect_url=" + encodeURIComponent("/seo");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
+      const token = await getToken();
       const res = await fetch("/api/actions/ai-seo", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token || ""}`,
+        },
         body: JSON.stringify({ task, content, title, targetKeyword, url, language }),
       });
       const data = await res.json();

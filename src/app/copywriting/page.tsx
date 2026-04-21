@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@clerk/clerk-react";
 import { useState } from "react";
 import { Coins, Loader2, Copy, Check } from "lucide-react";
 
@@ -18,7 +19,17 @@ const COPY_TYPES: { value: CopyType; label: string; icon: string }[] = [
 const LANGUAGES = ["English", "Traditional Chinese", "Simplified Chinese", "Cantonese"];
 const TONES = ["Professional", "Friendly", "Casual", "Luxury", "Urgent", "Playful"];
 
-export default function CopywritingPage() {
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="text-cyan-400">Loading...</div>
+    </div>
+  );
+}
+
+export default function CopywritingClient() {
+  const { isSignedIn, getToken, isLoaded } = useAuth();
+
   const [type, setType] = useState<CopyType>("ad_headline");
   const [product, setProduct] = useState("");
   const [brand, setBrand] = useState("");
@@ -31,15 +42,26 @@ export default function CopywritingPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  if (!isLoaded) return <LoadingFallback />;
+
   const handleGenerate = async () => {
+    if (!isSignedIn) {
+      window.location.href = "/sign-in?redirect_url=" + encodeURIComponent("/copywriting");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
+      const token = await getToken();
       const res = await fetch("/api/actions/copywriting", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token || ""}`,
+        },
         body: JSON.stringify({ type, product, brand, audience, tone, language, extra }),
       });
       const data = await res.json();

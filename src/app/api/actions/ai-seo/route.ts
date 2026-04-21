@@ -5,9 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { optimizeForSeo, SeoInput } from "@/lib/skills/ai-seo";
-import { prisma, deductCredits, getCreditBalance } from "@/lib/billing/credit-system";
+import { prisma, deductCredits, getCreditBalance, ensureCreditAccount } from "@/lib/billing/credit-system";
 
 const CREDITS_PER_SEO = 10;
 
@@ -23,9 +23,13 @@ export async function POST(req: NextRequest) {
     const { task, content, language, targetKeyword } = body;
 
     // Get user
-    const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+    let user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      // Auto-create user + credit account on first action
+      const clerkUser = await clerkClient().users.getUser(userId);
+      const email = clerkUser.emailAddresses[0]?.emailAddress ?? "unknown@unknown.com";
+      const name = clerkUser.fullName ?? undefined;
+      user = await ensureCreditAccount(userId, email, name);
     }
 
     // Check balance first

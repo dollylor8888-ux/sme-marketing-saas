@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/react";
 import { useState } from "react";
 import { Coins, Loader2 } from "lucide-react";
 

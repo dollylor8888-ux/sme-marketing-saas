@@ -54,7 +54,6 @@ export default function BossDashboard() {
     const params = new URLSearchParams(window.location.search);
     const urlKey = params.get("key");
     if (urlKey) {
-      setKey(urlKey);
       authenticate(urlKey);
     }
   }, []);

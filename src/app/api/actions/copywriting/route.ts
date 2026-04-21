@@ -5,9 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { generateCopy, CopywritingInput } from "@/lib/skills/copywriting";
-import { prisma, getCreditBalance, deductCredits } from "@/lib/billing/credit-system";
+import { prisma, getCreditBalance, deductCredits, ensureCreditAccount } from "@/lib/billing/credit-system";
 
 const CREDITS_PER_COPY = 10;
 
@@ -25,9 +25,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+    let user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      // Auto-create user + credit account on first action
+      const clerkUser = await (await clerkClient()).users.getUser(userId);
+      const email = clerkUser.emailAddresses[0]?.emailAddress ?? "unknown@unknown.com";
+      const name = clerkUser.fullName ?? undefined;
+      user = await ensureCreditAccount(userId, email, name);
     }
 
     const balance = await getCreditBalance(user.id);

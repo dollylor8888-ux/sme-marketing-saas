@@ -17,7 +17,7 @@ export default clerkMiddleware(async (auth, req) => {
 
   // Dashboard routes need Clerk auth
   if (isProtectedRoute(req)) {
-    await auth.protect();
+    auth().protect();
   }
 });
 

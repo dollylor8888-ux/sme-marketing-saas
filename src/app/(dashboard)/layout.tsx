@@ -22,7 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
         <nav className="space-y-1">
           <Link
-            href="/"
+            href="/dashboard"
             className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition"
           >
             <span>📊</span> Overview

@@ -1,5 +1,6 @@
 "use client";
 
+import Header from "@/components/Header";
 import { useState } from "react";
 import Link from "next/link";
 import { Coins, Loader2 } from "lucide-react";
@@ -58,22 +59,7 @@ export default function SeoPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
-      <header className="border-b border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center font-bold text-white text-sm">
-              A
-            </div>
-            <span className="text-white font-semibold">Arclion</span>
-          </div>
-          <Link
-            href="/sign-in?redirect_url=/seo"
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg font-medium transition"
-          >
-            Sign In
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12">

@@ -1,7 +1,7 @@
 "use client";
 
+import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
 import { useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
 import { Coins, Loader2, Copy, Check } from "lucide-react";
 
 type CopyType = "ad_headline" | "ad_description" | "email_subject" | "email_body" | "social_post" | "landing_hero" | "product_description";
@@ -19,7 +19,7 @@ const COPY_TYPES: { value: CopyType; label: string; icon: string }[] = [
 const LANGUAGES = ["English", "Traditional Chinese", "Simplified Chinese", "Cantonese"];
 const TONES = ["Professional", "Friendly", "Casual", "Luxury", "Urgent", "Playful"];
 
-export default function CopywritingClient() {
+function CopywritingTool() {
   const { isSignedIn, getToken } = useAuth();
   const [type, setType] = useState<CopyType>("ad_headline");
   const [product, setProduct] = useState("");
@@ -240,5 +240,13 @@ export default function CopywritingClient() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CopywritingPage() {
+  return (
+    <SignedIn>
+      <CopywritingTool />
+    </SignedIn>
   );
 }

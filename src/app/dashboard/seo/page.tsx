@@ -1,7 +1,7 @@
 "use client";
 
+import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
 import { useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
 import { Coins, Loader2 } from "lucide-react";
 
 type SeoTask = "optimize_content" | "meta_tags" | "schema_markup" | "keyword_research" | "content_audit";
@@ -16,7 +16,7 @@ const SEO_TASKS: { value: SeoTask; label: string; icon: string }[] = [
 
 const LANGUAGES = ["English", "Traditional Chinese", "Simplified Chinese", "Cantonese"];
 
-export default function SeoPage() {
+function SeoTool() {
   const { isSignedIn, getToken } = useAuth();
   const [task, setTask] = useState<SeoTask>("optimize_content");
   const [content, setContent] = useState("");
@@ -207,5 +207,13 @@ export default function SeoPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardSeoPage() {
+  return (
+    <SignedIn>
+      <SeoTool />
+    </SignedIn>
   );
 }

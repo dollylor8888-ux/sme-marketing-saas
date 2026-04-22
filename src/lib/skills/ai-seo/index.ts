@@ -82,9 +82,9 @@ export async function optimizeForSeo(input: SeoInput): Promise<{
       tokenRecord,
       marginRecord,
     };
-  } catch (error) {
+  } catch (e) {
     return {
-      output: { success: false, error: error instanceof Error ? error.message : "Unknown error" },
+      output: { success: false, error: (e as Error).message || String(e) },
     };
   }
 }

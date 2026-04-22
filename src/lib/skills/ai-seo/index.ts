@@ -33,6 +33,17 @@ export async function optimizeForSeo(input: SeoInput): Promise<{
 }> {
   const { task, content, title, targetKeyword, url, language = "English" } = input;
 
+  // MOCK MODE
+  if (true) {
+    return {
+      output: {
+        success: true,
+        result: `[MOCK SEO ${task}] Optimized for keyword: ${targetKeyword || "general"}`,
+        suggestions: ["Add more headers", "Use bullet points", "Include meta description"],
+      },
+    };
+  }
+
   const systemPrompt = "You are an SEO expert specializing in AI search engine optimization. Provide actionable recommendations.";
   const userPrompt = buildUserPrompt(task, { content, title, targetKeyword, url, language });
 

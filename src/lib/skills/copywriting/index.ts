@@ -50,12 +50,22 @@ const SYSTEM_PROMPTS: Record<CopyType, string> = {
   product_description: "You are a product copywriter. Write compelling product descriptions that highlight benefits and drive sales.",
 };
 
+const MOCK_MODE = true; // TODO: set to false when real MiniMax key is available
+
 export async function generateCopy(input: CopywritingInput): Promise<{
   output: CopywritingOutput;
   tokenRecord?: TokenRecord;
   marginRecord?: MarginRecord;
 }> {
   const { type, product, brand, audience, tone = "professional", language = "English", extra } = input;
+
+  // MOCK MODE - return fake copy for testing
+  if (MOCK_MODE) {
+    const mockCopy = `[MOCK] ${type} for ${product || "your product"} by ${brand || "your brand"} — Target: ${audience || "everyone"} — Tone: ${tone}`;
+    return {
+      output: { success: true, copy: mockCopy, variants: [`${mockCopy} (v2)`, `${mockCopy} (v3)`] },
+    };
+  }
 
   const systemPrompt = SYSTEM_PROMPTS[type] ?? "You are an expert copywriter.";
   const userPrompt = buildUserPrompt(type, { product, brand, audience, tone, language, extra });

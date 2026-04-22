@@ -5,9 +5,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { generateCopy, CopywritingInput } from "@/lib/skills/copywriting";
 import { prisma, getCreditBalance, deductCredits, ensureCreditAccount } from "@/lib/billing/credit-system";
+import { saveGeneration } from "@/lib/memory/memory-service";
 
 const CREDITS_PER_COPY = 10;
 
@@ -25,49 +26,65 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    // Ensure user exists in DB (auto-create on first action)
     let user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!user) {
-      // Auto-create user + credit account on first action
+      const { clerkClient } = await import("@clerk/nextjs/server");
       const clerkUser = await (await clerkClient()).users.getUser(userId);
       const email = clerkUser.emailAddresses[0]?.emailAddress ?? "unknown@unknown.com";
       const name = clerkUser.fullName ?? undefined;
       user = await ensureCreditAccount(userId, email, name);
     }
 
+    // Check credits
     const balance = await getCreditBalance(user.id);
     if (balance < CREDITS_PER_COPY) {
       return NextResponse.json({ error: "Insufficient credits", balance }, { status: 402 });
     }
 
-    const result = await generateCopy({
-      type,
-      product,
-      brand,
-      audience,
-      tone,
-      language,
-      extra,
-    });
+    // Generate copy (pass userId for memory context)
+    const result = await generateCopy(
+      { type, product, brand, audience, tone, language, extra },
+      userId
+    );
 
-    console.log("[DEBUG copywriting] result:", JSON.stringify(result));
-
-    // Always deduct credits even if generateCopy "succeeds" but returns no content
+    // Deduct credits
     await deductCredits(user.id, CREDITS_PER_COPY, `Copywriting: ${type}`);
     const newBalance = await getCreditBalance(user.id);
 
+    // Save to generation history (memory)
+    if (result.output.success && result.output.copy) {
+      await saveGeneration(userId, {
+        skill: "copywriting",
+        actionType: type,
+        inputData: { type, product, brand, audience, tone, language, extra },
+        generatedContent: result.output.copy,
+        variants: result.output.variants,
+      }).catch((e) => console.error("[memory] Failed to save generation:", e));
+    }
+
+    // Build response
     const response: Record<string, unknown> = {
       creditsUsed: CREDITS_PER_COPY,
       newBalance,
     };
+
     if (result.output) {
       response.content = result.output.copy;
       response.variants = result.output.variants;
+      response.structured = result.output.structured;
       response.error = result.output.error;
       response.success = result.output.success;
     }
+
+    // Debug info (remove in production)
     if (result.tokenRecord) {
-      response._debug = { tokens: result.tokenRecord, margin: result.marginRecord };
+      response._debug = {
+        tokens: result.tokenRecord,
+        margin: result.marginRecord,
+      };
     }
+
     return NextResponse.json(response);
   } catch (error) {
     console.error("[copywriting POST]", error);

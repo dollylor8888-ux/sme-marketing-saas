@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============ USER & AUTH ============
+// ============ USER & AUTH ===========
 model User {
   id            String    @id @default(cuid())
   clerkId       String    @unique
@@ -16,8 +16,94 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  creditAccount CreditAccount?
-  actions       ActionLog[]
+  creditAccount   CreditAccount?
+  actions         ActionLog[]
+  brandMemory     BrandMemory?
+  productMemories ProductMemory[]
+  preferences     UserPreference?
+  generations     GenerationHistory[]
+}
+
+// ============ BRAND MEMORY ===========
+model BrandMemory {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+
+  brandName     String?
+  tagline      String?
+  voice        String?
+  tone         String?
+  values       String[]
+  avoidWords   String[]
+  keyMessages  String[]
+  competitors  String[]
+  goodExamples String[]
+  badExamples  String[]
+  industry     String?
+  description  String?
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+}
+
+// ============ PRODUCT MEMORY ===========
+model ProductMemory {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  name        String
+  description String?
+  category    String?
+  features    String[]
+  benefits    String[]
+  differentiators String[]
+  targetAudience String[]
+  useCases    String[]
+  priceRange  String?
+  position    String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ============ USER PREFERENCE ===========
+model UserPreference {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  defaultLanguage String   @default("English")
+  defaultTone    String   @default("Professional")
+  defaultAudience String?
+  preferVariants  Boolean  @default(true)
+  preferShortCopy Boolean  @default(false)
+  includeEmoji   Boolean  @default(true)
+  primaryPlatform String?
+  primaryGoal     String?
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+}
+
+// ============ GENERATION HISTORY ===========
+model GenerationHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  skill       String
+  actionType  String
+  inputData   String   // JSON stored as string
+  generatedContent String
+  variants    String[]
+  rating      Int?
+  userFeedback String?
+  usedContent  Boolean  @default(false)
+  productId   String?
+  brandId     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, skill])
+  @@index([userId, createdAt])
 }
 
 model CreditAccount {

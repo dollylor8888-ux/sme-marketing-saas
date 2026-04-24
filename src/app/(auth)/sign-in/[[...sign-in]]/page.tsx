@@ -1,19 +1,38 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function SignInPage() {
   const ref = useRef<HTMLDivElement>(null);
+  const [clerkReady, setClerkReady] = useState(false);
 
   useEffect(() => {
-    if (ref.current && (window as any).Clerk) {
-      (window as any).Clerk.mountSignIn(ref.current);
-    }
+    // Wait for Clerk to be fully loaded before mounting
+    const tryMount = () => {
+      const clerk = (window as any).Clerk;
+      if (clerk && ref.current) {
+        if (clerk.loaded) {
+          clerk.mountSignIn(ref.current);
+          setClerkReady(true);
+        } else {
+          // Clerk exists but not loaded yet, poll
+          setTimeout(tryMount, 100);
+        }
+      } else {
+        // Clerk not loaded yet, wait and retry
+        setTimeout(tryMount, 100);
+      }
+    };
+
+    tryMount();
   }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900">
-      <div ref={ref} />
+      {!clerkReady && (
+        <div className="text-white animate-pulse">Loading...</div>
+      )}
+      <div ref={ref} style={{ display: clerkReady ? 'block' : 'none' }} />
     </div>
   );
 }

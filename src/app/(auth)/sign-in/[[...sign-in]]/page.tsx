@@ -1,22 +1,19 @@
 "use client";
 
-import { SignIn } from "@clerk/nextjs";
-import { Suspense } from "react";
-
-function SignInFallback() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900">
-      <div className="text-white animate-pulse">Loading...</div>
-    </div>
-  );
-}
+import { useEffect, useRef } from "react";
 
 export default function SignInPage() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (ref.current && (window as any).Clerk) {
+      (window as any).Clerk.mountSignIn(ref.current);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900">
-      <Suspense fallback={<SignInFallback />}>
-        <SignIn />
-      </Suspense>
+      <div ref={ref} />
     </div>
   );
 }

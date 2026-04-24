@@ -9,24 +9,11 @@
  * - Tone/style guardrails from user preferences
  */
 
-import OpenAI from "openai";
+import { openai, DEFAULT_MODEL } from "../ai-client";
 import { TokenRecord } from "../../billing/token-tracker";
 import { MarginRecord, calculateActionMargin } from "../../billing/margin-calculator";
 import { SkillCreditCost } from "../../billing/models";
 import { buildMemoryContext } from "../../memory/memory-service";
-
-const provider = process.env.AI_PROVIDER ?? "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: provider === "minimax" ? "https://api.minimax.chat/v1" : undefined,
-});
-
-export const DEFAULT_MODEL = provider === "minimax"
-  ? "abab6-chat"
-  : "gpt-4o-mini";
-
-export { openai };
 
 export type CopyType = 
   | "ad_headline" 

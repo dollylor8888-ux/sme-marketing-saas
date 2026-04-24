@@ -6,27 +6,30 @@ export default function SignUpPage() {
   const [clerkReady, setClerkReady] = useState(false);
 
   useEffect(() => {
-    const mount = () => {
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+
+    const tryMount = () => {
       const clerk = (window as Window & { Clerk?: { loaded?: boolean; mountSignUp: (el: HTMLElement) => void } }).Clerk;
       const el = document.getElementById("clerk-sign-up");
+
       if (clerk?.loaded && el) {
         clerk.mountSignUp(el);
         setClerkReady(true);
-      } else if (clerk) {
-        const interval = setInterval(() => {
-          const c = (window as Window & { Clerk?: { loaded?: boolean; mountSignUp: (el: HTMLElement) => void } }).Clerk;
-          const e = document.getElementById("clerk-sign-up");
-          if (c?.loaded && e) {
-            c.mountSignUp(e);
-            setClerkReady(true);
-            clearInterval(interval);
-          }
-        }, 100);
+        if (intervalId) clearInterval(intervalId);
+        return;
+      }
+
+      if (!intervalId && clerk) {
+        intervalId = setInterval(tryMount, 200);
       }
     };
 
-    const timer = setTimeout(mount, 300);
-    return () => clearTimeout(timer);
+    const timerId = setTimeout(tryMount, 500);
+
+    return () => {
+      clearTimeout(timerId);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   return (

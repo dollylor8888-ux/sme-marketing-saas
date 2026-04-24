@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sme-marketing-saas.vercel.app/sitemap.xml
+
+# Block AI crawlers from indexing dashboard (authenticated area)
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /sign-in/
+Disallow: /sign-up/

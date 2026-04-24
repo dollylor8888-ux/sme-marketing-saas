@@ -7,16 +7,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { generateCopy, CopywritingInput } from "@/lib/skills/copywriting";
-import { prisma, getCreditBalance, deductCredits, ensureCreditAccount } from "@/lib/billing/credit-system";
+import { prisma, deductCredits, ensureCreditAccount, refundCredits } from "@/lib/billing/credit-system";
 import { saveGeneration } from "@/lib/memory/memory-service";
 
 const CREDITS_PER_COPY = 10;
+
+// Idempotency: track recent requests to prevent duplicate processing
+const recentRequests = new Map<string, number>();
+const IDEMPOTENCY_WINDOW_MS = 30_000;
 
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Idempotency check
+    const idempotencyKey = req.headers.get("x-idempotency-key");
+    if (idempotencyKey) {
+      const lastSeen = recentRequests.get(idempotencyKey);
+      if (lastSeen && Date.now() - lastSeen < IDEMPOTENCY_WINDOW_MS) {
+        return NextResponse.json({ error: "Duplicate request", code: "IDEMPOTENT" }, { status: 409 });
+      }
+      recentRequests.set(idempotencyKey, Date.now());
     }
 
     const body = await req.json();
@@ -30,27 +44,31 @@ export async function POST(req: NextRequest) {
     let user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!user) {
       const { clerkClient } = await import("@clerk/nextjs/server");
-      const clerkUser = await (await clerkClient()).users.getUser(userId);
+      const clerk = await clerkClient();
+      const clerkUser = await clerk.users.getUser(userId);
       const email = clerkUser.emailAddresses[0]?.emailAddress ?? "unknown@unknown.com";
       const name = clerkUser.fullName ?? undefined;
       user = await ensureCreditAccount(userId, email, name);
     }
 
-    // Check credits
-    const balance = await getCreditBalance(user.id);
-    if (balance < CREDITS_PER_COPY) {
-      return NextResponse.json({ error: "Insufficient credits", balance }, { status: 402 });
+    // Atomic credit deduction
+    const deductResult = await deductCredits(user.id, CREDITS_PER_COPY, `Copywriting: ${type}`);
+    if (!deductResult.success) {
+      return NextResponse.json({ error: "Insufficient credits", balance: deductResult.remaining }, { status: 402 });
     }
 
     // Generate copy (pass userId for memory context)
-    const result = await generateCopy(
-      { type, product, brand, audience, tone, language, extra },
-      userId
-    );
-
-    // Deduct credits
-    await deductCredits(user.id, CREDITS_PER_COPY, `Copywriting: ${type}`);
-    const newBalance = await getCreditBalance(user.id);
+    let result: Awaited<ReturnType<typeof generateCopy>>;
+    try {
+      result = await generateCopy(
+        { type, product, brand, audience, tone, language, extra },
+        userId
+      );
+    } catch (aiError) {
+      // Refund credits on AI failure
+      await refundCredits(user.id, CREDITS_PER_COPY, `REFUND: Copywriting failed — ${type}`);
+      throw aiError;
+    }
 
     // Save to generation history (memory)
     if (result.output.success && result.output.copy) {
@@ -66,7 +84,7 @@ export async function POST(req: NextRequest) {
     // Build response
     const response: Record<string, unknown> = {
       creditsUsed: CREDITS_PER_COPY,
-      newBalance,
+      newBalance: deductResult.remaining,
     };
 
     if (result.output) {
@@ -75,14 +93,6 @@ export async function POST(req: NextRequest) {
       response.structured = result.output.structured;
       response.error = result.output.error;
       response.success = result.output.success;
-    }
-
-    // Debug info (remove in production)
-    if (result.tokenRecord) {
-      response._debug = {
-        tokens: result.tokenRecord,
-        margin: result.marginRecord,
-      };
     }
 
     return NextResponse.json(response);

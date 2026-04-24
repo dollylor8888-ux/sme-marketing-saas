@@ -165,8 +165,8 @@ export async function optimizeForSeo(
   const { task: rawTask, content, title, targetKeyword, url, language = "English" } = input;
   const task: SeoTask = rawTask;
 
-  // MOCK MODE
-  if (true) {
+  // MOCK MODE — controlled by env var for development
+  if (process.env.MOCK_AI === "true") {
     return {
       output: {
         success: true,

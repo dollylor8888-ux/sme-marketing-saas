@@ -347,8 +347,8 @@ export async function generateCopy(
 }> {
   const { type, product, brand, audience, tone = "Professional", language = "English", extra } = input;
 
-  // MOCK MODE
-  if (true) {
+  // MOCK MODE — controlled by env var for development
+  if (process.env.MOCK_AI === "true") {
     const mockCopy = `[MOCK] ${type} for ${product || "your product"}${brand ? ` by ${brand}` : ""} — Target: ${audience || "everyone"} — Tone: ${tone}`;
     return {
       output: { 

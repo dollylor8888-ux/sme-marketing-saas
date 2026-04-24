@@ -222,13 +222,34 @@ export async function rateGeneration(
 // ============ CONTEXT BUILDER ============
 
 /**
+ * Sanitize user-controlled strings before injecting into AI prompts.
+ * Prevents prompt injection by limiting length and removing control characters.
+ */
+function sanitizeForPrompt(value: string, maxLength = 500): string {
+  if (!value) return "";
+  // Remove control characters (but allow newlines for formatting)
+  const cleaned = value
+    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    .trim();
+  // Hard cap at maxLength
+  return cleaned.length > maxLength ? cleaned.slice(0, maxLength) + "..." : cleaned;
+}
+
+/**
+ * Sanitize array of strings with per-item limit
+ */
+function sanitizeArray(arr: string[], maxItems = 10, maxPerItem = 300): string[] {
+  return arr.slice(0, maxItems).map((s) => sanitizeForPrompt(s, maxPerItem));
+}
+
+/**
  * Build a rich context string for AI prompts
  * This is injected into the system prompt to give AI user context
  */
 export async function buildMemoryContext(
   userId: string,
   skill: string,
-  actionType?: string
+  _actionType?: string
 ): Promise<string> {
   const memory = await loadMemory(userId);
 

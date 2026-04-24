@@ -1,0 +1,30 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://sme-marketing-saas.vercel.app/sitemap.xml
+
+# AI / LLM Bots — allow for AI search citation
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# AI training bots — optional blocking (blocks training but allows search)
+User-agent: CCBot
+Disallow: /
+
+# Common crawlers
+User-agent: *
+Allow: /

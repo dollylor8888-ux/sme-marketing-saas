@@ -2,8 +2,13 @@
 User-agent: *
 Allow: /
 
-# Sitemap
 Sitemap: https://sme-marketing-saas.vercel.app/sitemap.xml
+
+# Block dashboard / api from indexing
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /sign-in/
+Disallow: /sign-up/
 
 # AI / LLM Bots — allow for AI search citation
 User-agent: GPTBot
@@ -21,10 +26,6 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
-# AI training bots — optional blocking (blocks training but allows search)
+# AI training bots — block training but allow search citation
 User-agent: CCBot
 Disallow: /
-
-# Common crawlers
-User-agent: *
-Allow: /

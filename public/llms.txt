@@ -1,0 +1,57 @@
+# Arclion Marketing | AI-Powered SME Marketing Platform
+
+## Overview
+Arclion Marketing is an AI-powered marketing SaaS platform designed for small and medium enterprises (SMEs). It provides 36 AI marketing skills to help businesses create content, optimize SEO, and track analytics — without requiring a dedicated marketing team.
+
+## Features
+
+### Core Marketing Skills
+- **Copywriting**: Generate ads, emails, social posts, and landing page copy
+- **AI SEO**: Content optimization for AI search engines
+- **Analytics**: Track performance and user behavior
+- **Social Content**: Platform-specific social media copy
+- **Email Sequences**: Drip campaigns and newsletters
+- **A/B Testing**: Test and optimize marketing campaigns
+
+### Available Tools
+- Product Marketing Analyzer
+- Ad Direction Generator
+- Creative Content Creator
+- AI SEO Optimizer
+- Copywriting Assistant
+- Campaign Performance Tracker
+
+## Pricing Plans
+
+### Starter (Free)
+- 100 credits
+- Perfect for trying out the platform
+- Access to basic marketing skills
+
+### Pro ($9/month)
+- 1,000 credits per month
+- For regular marketers
+- Full access to all 36 AI marketing skills
+- Priority processing
+
+### Unlimited ($29/month)
+- Unlimited credits
+- Power users and agencies
+- Full access to all features
+- API access
+- Dedicated support
+
+## Getting Started
+1. Sign up at https://sme-marketing-saas.vercel.app/sign-up
+2. Get 100 free credits on signup
+3. Choose a marketing skill and start creating
+
+## Technical Stack
+- Next.js 16
+- React 19
+- Clerk Authentication
+- Prisma Database
+- MiniMax AI / OpenAI
+
+## Contact
+- Website: https://sme-marketing-saas.vercel.app

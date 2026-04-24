@@ -7,6 +7,8 @@ import SEOSchemas from "@/app/seo/schemas";
 // Force dynamic rendering so ClerkProvider context is available
 export const dynamic = "force-dynamic";
 
+const BASE_URL = "https://sme-marketing-saas.vercel.app";
+
 const geistSans = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",
@@ -18,6 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
   title: {
     default: "Arclion Marketing | AI-Powered SME Marketing Platform",
     template: "%s | Arclion Marketing",
@@ -37,10 +40,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Arclion" }],
   creator: "Arclion",
+  publisher: "Arclion",
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://sme-marketing-saas.vercel.app",
+    url: BASE_URL,
     siteName: "Arclion Marketing",
     title: "Arclion Marketing | AI-Powered SME Marketing Platform",
     description:
@@ -73,7 +77,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://sme-marketing-saas.vercel.app",
+    canonical: BASE_URL,
   },
 };
 

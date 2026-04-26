@@ -1,10 +1,31 @@
+# https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
 
 Sitemap: https://sme-marketing-saas.vercel.app/sitemap.xml
 
-# Block AI crawlers from indexing dashboard (authenticated area)
+# Block dashboard / api from indexing
 Disallow: /dashboard/
 Disallow: /api/
 Disallow: /sign-in/
 Disallow: /sign-up/
+
+# AI / LLM Bots — allow for AI search citation
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# AI training bots — block training but allow search citation
+User-agent: CCBot
+Disallow: /

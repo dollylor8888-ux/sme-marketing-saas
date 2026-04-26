@@ -24,7 +24,7 @@ export interface MarginRecord {
  */
 export function calculateActionMargin(
   record: TokenRecord,
-  creditCost: number = SkillCreditCost[record.skill] ?? 10
+  _creditCost: number = SkillCreditCost[record.skill] ?? 10
 ): MarginRecord {
   const apiCost = calculateApiCost(record.model, record.inputTokens, record.outputTokens);
   const userPaidUsd = record.userPaidCredits * CREDIT_USD_VALUE;

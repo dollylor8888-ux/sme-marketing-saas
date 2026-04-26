@@ -3,7 +3,7 @@
 import Header from "@/components/Header";
 import { useState } from "react";
 import Link from "next/link";
-import { Coins, Loader2, Copy, Check } from "lucide-react";
+import { Loader2, Copy, Check } from "lucide-react";
 
 type CopyType = "ad_headline" | "ad_description" | "email_subject" | "email_body" | "social_post" | "landing_hero" | "product_description";
 

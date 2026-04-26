@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { generateCopy, CopywritingInput } from "@/lib/skills/copywriting";
+import { generateCopy, CopywritingInput, FineTuneOptions } from "@/lib/skills/copywriting";
 import { prisma, getCreditBalance, deductCredits, ensureCreditAccount } from "@/lib/billing/credit-system";
 import { saveGeneration } from "@/lib/memory/memory-service";
 
@@ -20,10 +20,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { type, product, brand, audience, tone, language, extra } = body as CopywritingInput;
+    const { type, product, brand, audience, tone, language, extra, fineTune, previousOutput } = body as CopywritingInput & { fineTune?: FineTuneOptions; previousOutput?: string };
 
     if (!type || !product) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Fine-tune mode: previousOutput is required
+    if (fineTune && !previousOutput) {
+      return NextResponse.json({ error: "previousOutput is required when fine-tuning" }, { status: 400 });
     }
 
     // Ensure user exists in DB (auto-create on first action)
@@ -44,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     // Generate copy (pass userId for memory context)
     const result = await generateCopy(
-      { type, product, brand, audience, tone, language, extra },
+      { type, product, brand, audience, tone, language, extra, fineTune, previousOutput },
       userId
     );
 
@@ -75,14 +80,6 @@ export async function POST(req: NextRequest) {
       response.structured = result.output.structured;
       response.error = result.output.error;
       response.success = result.output.success;
-    }
-
-    // Debug info (remove in production)
-    if (result.tokenRecord) {
-      response._debug = {
-        tokens: result.tokenRecord,
-        margin: result.marginRecord,
-      };
     }
 
     return NextResponse.json(response);

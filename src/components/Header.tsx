@@ -16,6 +16,12 @@ export default function Header() {
           <span className="text-white font-semibold text-lg">Arclion Marketing</span>
         </Link>
         <div className="flex items-center gap-4">
+          <Link
+            href="/free-marketing-diagnosis"
+            className="text-slate-300 hover:text-white transition text-sm"
+          >
+            Free Diagnosis
+          </Link>
           {isSignedIn ? (
             <>
               <Link

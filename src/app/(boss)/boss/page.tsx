@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TrendingUp, Coins, Cpu, BarChart3, DollarSign, Lock, Eye, EyeOff } from "lucide-react";
+import { TrendingUp, Cpu, BarChart3, DollarSign, Lock, Eye, EyeOff } from "lucide-react";
 
 interface MarginSummary {
   totalRevenue: number;

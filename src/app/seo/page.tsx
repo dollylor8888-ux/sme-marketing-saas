@@ -3,7 +3,7 @@
 import Header from "@/components/Header";
 import { useState } from "react";
 import Link from "next/link";
-import { Coins, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 type SeoTask = "optimize_content" | "meta_tags" | "schema_markup" | "keyword_research" | "content_audit";
 

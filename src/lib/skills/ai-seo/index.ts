@@ -12,7 +12,7 @@ import { openai, DEFAULT_MODEL } from "../ai-client";
 import { TokenRecord } from "../../billing/token-tracker";
 import { calculateActionMargin, MarginRecord } from "../../billing/margin-calculator";
 import { SkillCreditCost } from "../../billing/models";
-import { buildMemoryContext } from "../../memory/memory-service";
+import { buildMemoryContext, loadMemoryContext } from "../../memory/memory-service";
 
 export type SeoTask = 
   | "optimize_content" 
@@ -185,9 +185,8 @@ export async function optimizeForSeo(
   try {
     // Build memory context if userId provided
     const theUserId = userId ?? "";
-    const memoryContext = theUserId
-      ? await buildMemoryContext(theUserId, "ai-seo", "general")
-      : "";
+    const loaded = theUserId ? await loadMemoryContext(theUserId) : null;
+    const memoryContext = loaded ? buildMemoryContext(loaded) : "";
 
     const systemPrompt = buildSystemPrompt(task, memoryContext);
     const userPrompt = buildUserPrompt(task, { content, title, targetKeyword, url, language });

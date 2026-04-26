@@ -1,352 +1,230 @@
 /**
- * Memory Service — Persist and retrieve user context for AI interactions
- * 
- * Provides:
- * - loadMemory(userId): Load all memory for a user
- * - saveBrandMemory(userId, data): Save/update brand memory
- * - saveProductMemory(userId, data): Save/update product memory
- * - savePreference(userId, data): Save user preferences
- * - saveGeneration(userId, data): Save generation history
- * - buildContext(userId, skill, actionType): Build AI prompt context
+ * Memory Service
+ * Brand Intelligence Hub - Learning from every interaction
  */
 
-import { prisma } from "@/lib/billing/credit-system";
+import { prisma } from '@/lib/billing/credit-system';
 
-// ============ TYPES ============
+export type MemoryContext = {
+  brandMemory: Record<string, unknown> | null;
+  products: Record<string, unknown>[];
+  preferences: Record<string, unknown> | null;
+  recentGenerations: Record<string, unknown>[];
+};
 
-export interface BrandMemoryData {
-  brandName?: string;
-  tagline?: string;
-  voice?: string;
-  tone?: string;
-  values?: string[];
-  avoidWords?: string[];
-  keyMessages?: string[];
-  competitors?: string[];
-  goodExamples?: string[];
-  badExamples?: string[];
-  industry?: string;
-  description?: string;
-}
-
-export interface ProductMemoryData {
-  name: string;
-  description?: string;
-  category?: string;
-  features?: string[];
-  benefits?: string[];
-  differentiators?: string[];
-  targetAudience?: string[];
-  useCases?: string[];
-  priceRange?: string;
-  position?: string;
-}
-
-export interface UserPreferenceData {
-  defaultLanguage?: string;
-  defaultTone?: string;
-  defaultAudience?: string;
-  preferVariants?: boolean;
-  preferShortCopy?: boolean;
-  includeEmoji?: boolean;
-  primaryPlatform?: string;
-  primaryGoal?: string;
-}
-
-export interface GenerationData {
-  skill: string;
-  actionType: string;
-  inputData: Record<string, unknown>;
-  generatedContent: string;
-  variants?: string[];
-  rating?: number;
-  userFeedback?: string;
-  productId?: string;
-  brandId?: string;
-}
-
-export interface FullMemory {
-  brand: BrandMemoryData | null;
-  products: ProductMemoryData[];
-  preferences: UserPreferenceData;
-  recentGenerations: {
-    skill: string;
-    actionType: string;
-    generatedContent: string;
-    createdAt: Date;
-  }[];
-}
-
-// ============ LOADER ============
-
-export async function loadMemory(userId: string): Promise<FullMemory> {
+/**
+ * Load all memory context for a user
+ */
+export async function loadMemoryContext(clerkId: string): Promise<MemoryContext | null> {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: {
-      brandMemory: true,
-      productMemories: true,
-      preferences: true,
-      generations: {
-        orderBy: { createdAt: "desc" },
-        take: 10,
-        select: {
-          skill: true,
-          actionType: true,
-          generatedContent: true,
-          createdAt: true,
-        },
-      },
-    },
+    where: { clerkId },
   });
 
-  if (!user) {
-    return {
-      brand: null,
-      products: [],
-      preferences: getDefaultPreferences(),
-      recentGenerations: [],
-    };
-  }
+  if (!user) return null;
+
+  // Get first workspace
+  const workspace = await prisma.workspace.findFirst({
+    where: { userId: user.id },
+  });
+
+  const [brandMemory, products, preferences, generations] = await Promise.all([
+    workspace ? prisma.brandMemory.findUnique({ where: { workspaceId: workspace.id } }) : null,
+    workspace ? prisma.product.findMany({ where: { workspaceId: workspace.id } }) : [],
+    workspace ? prisma.userPreference.findUnique({ where: { userId: user.id } }) : null,
+    prisma.generationHistory.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    }),
+  ]);
 
   return {
-    brand: user.brandMemory ? sanitizeBrandMemory(user.brandMemory) : null,
-    products: user.productMemories.map(sanitizeProductMemory),
-    preferences: user.preferences ? sanitizePreferences(user.preferences) : getDefaultPreferences(),
-    recentGenerations: user.generations.map((g) => ({
-      skill: g.skill,
-      actionType: g.actionType,
-      generatedContent: g.generatedContent,
-      createdAt: g.createdAt,
-    })),
+    brandMemory: brandMemory as Record<string, unknown> | null,
+    products: products as Record<string, unknown>[],
+    preferences: preferences as Record<string, unknown> | null,
+    recentGenerations: generations as Record<string, unknown>[],
   };
 }
 
-// ============ SAVERS ============
-
+/**
+ * Save or update brand memory
+ */
 export async function saveBrandMemory(
-  userId: string,
-  data: BrandMemoryData
-): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
-  if (!user) return;
+  clerkId: string,
+  data: Record<string, unknown>
+): Promise<unknown> {
+  const user = await prisma.user.findUnique({
+    where: { clerkId },
+  });
 
-  await prisma.brandMemory.upsert({
+  if (!user) return null;
+
+  const workspace = await prisma.workspace.findFirst({
     where: { userId: user.id },
-    create: {
-      userId: user.id,
-      ...data,
-    },
+  });
+
+  if (!workspace) return null;
+
+  return prisma.brandMemory.upsert({
+    where: { workspaceId: workspace.id },
     update: data,
+    create: { workspaceId: workspace.id, ...data },
   });
 }
-
-export async function saveProductMemory(
-  userId: string,
-  data: ProductMemoryData
-): Promise<string> {
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
-  if (!user) throw new Error("User not found");
-
-  // Check if product with same name exists
-  const existing = await prisma.productMemory.findFirst({
-    where: { userId: user.id, name: data.name },
-  });
-
-  const product = await prisma.productMemory.upsert({
-    where: { id: existing?.id ?? "" },
-    create: {
-      userId: user.id,
-      ...data,
-    },
-    update: data,
-  });
-
-  return product.id;
-}
-
-export async function savePreference(
-  userId: string,
-  data: Partial<UserPreferenceData>
-): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
-  if (!user) return;
-
-  await prisma.userPreference.upsert({
-    where: { userId: user.id },
-    create: {
-      userId: user.id,
-      ...getDefaultPreferences(),
-      ...data,
-    },
-    update: data,
-  });
-}
-
-export async function saveGeneration(
-  userId: string,
-  data: GenerationData
-): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
-  if (!user) return;
-
-  await prisma.generationHistory.create({
-    data: {
-      userId: user.id,
-      skill: data.skill,
-      actionType: data.actionType,
-      inputData: JSON.stringify(data.inputData),
-      generatedContent: data.generatedContent,
-      variants: data.variants ?? [],
-      rating: data.rating,
-      userFeedback: data.userFeedback,
-      productId: data.productId,
-      brandId: data.brandId,
-    },
-  });
-}
-
-export async function rateGeneration(
-  generationId: string,
-  rating: number,
-  feedback?: string
-): Promise<void> {
-  await prisma.generationHistory.update({
-    where: { id: generationId },
-    data: {
-      rating,
-      userFeedback: feedback,
-    },
-  });
-}
-
-// ============ CONTEXT BUILDER ============
 
 /**
- * Build a rich context string for AI prompts
- * This is injected into the system prompt to give AI user context
+ * Save product
  */
-export async function buildMemoryContext(
-  userId: string,
-  skill: string,
-  actionType?: string
-): Promise<string> {
-  const memory = await loadMemory(userId);
+export async function saveProduct(
+  clerkId: string,
+  data: Record<string, unknown> & { name: string; url: string }
+): Promise<unknown> {
+  const user = await prisma.user.findUnique({
+    where: { clerkId },
+  });
+
+  if (!user) return null;
+
+  const workspace = await prisma.workspace.findFirst({
+    where: { userId: user.id },
+  });
+
+  if (!workspace) return null;
+
+  const { id, ...rest } = data;
+
+  if (id) {
+    return prisma.product.update({
+      where: { id: id as string },
+      data: rest,
+    });
+  }
+
+  return prisma.product.create({
+    data: { workspaceId: workspace.id, ...rest },
+  });
+}
+
+/**
+ * Build context string for AI prompts
+ */
+export function buildMemoryContext(ctx: MemoryContext | null): string {
+  if (!ctx) return '[No memory context available]';
 
   const parts: string[] = [];
 
-  // Brand context
-  if (memory.brand) {
-    const b = memory.brand;
-    parts.push("=== BRAND CONTEXT ===");
-    if (b.brandName) parts.push(`Brand: ${b.brandName}`);
-    if (b.tagline) parts.push(`Tagline: ${b.tagline}`);
-    if (b.voice) parts.push(`Voice: ${b.voice}`);
-    if (b.tone) parts.push(`Tone: ${b.tone}`);
-    if (b.values?.length) parts.push(`Values: ${b.values.join(", ")}`);
-    if (b.industry) parts.push(`Industry: ${b.industry}`);
-    if (b.description) parts.push(`Description: ${b.description}`);
-    if (b.avoidWords?.length) parts.push(`AVOID these words/phrases: ${b.avoidWords.join(", ")}`);
-    if (b.keyMessages?.length) parts.push(`Key messages to convey: ${b.keyMessages.join("; ")}`);
-    if (b.goodExamples?.length) {
-      parts.push("=== GOOD COPY EXAMPLES (follow this style) ===");
-      b.goodExamples.forEach((ex, i) => parts.push(`${i + 1}. ${ex}`));
-    }
-    if (b.badExamples?.length) {
-      parts.push("=== BAD COPY EXAMPLES (avoid this style) ===");
-      b.badExamples.forEach((ex, i) => parts.push(`${i + 1}. ${ex}`));
-    }
+  parts.push('=== BRAND MEMORY ===');
+  if (ctx.brandMemory) {
+    const bm = ctx.brandMemory;
+    if (bm.brandName) parts.push(`Brand: ${bm.brandName}`);
+    if (bm.industry) parts.push(`Industry: ${bm.industry}`);
+    if (bm.tone) parts.push(`Tone: ${bm.tone}`);
+    if (bm.keyMessages) parts.push(`Key Messages: ${(bm.keyMessages as string[]).join(', ')}`);
+    if (bm.winningStyles) parts.push(`Winning Styles: ${(bm.winningStyles as string[]).join(', ')}`);
+    if (bm.bestAudiences) parts.push(`Best Audiences: ${(bm.bestAudiences as string[]).join(', ')}`);
+  } else {
+    parts.push('[No brand memory set yet]');
   }
 
-  // Relevant products
-  if (memory.products.length > 0) {
-    parts.push("\n=== PRODUCTS ===");
-    memory.products.slice(0, 5).forEach((p) => {
-      parts.push(`- ${p.name}${p.description ? `: ${p.description}` : ""}`);
-      if (p.features?.length) parts.push(`  Features: ${p.features.join(", ")}`);
-      if (p.benefits?.length) parts.push(`  Benefits: ${p.benefits.join(", ")}`);
-      if (p.targetAudience?.length) parts.push(`  Target: ${p.targetAudience.join(", ")}`);
-      if (p.differentiators?.length) parts.push(`  Differentiators: ${p.differentiators.join(", ")}`);
+  parts.push('\n=== PRODUCTS ===');
+  if (ctx.products.length > 0) {
+    ctx.products.forEach((pm, i) => {
+      parts.push(`Product ${i + 1}: ${pm.name || 'Unnamed'}`);
+      if (pm.description) parts.push(`  Desc: ${pm.description}`);
+      if (pm.category) parts.push(`  Category: ${pm.category}`);
+      if (pm.sellingPoints) parts.push(`  Selling Points: ${JSON.stringify(pm.sellingPoints)}`);
     });
+  } else {
+    parts.push('[No products yet]');
   }
 
-  // User preferences
-  const pref = memory.preferences;
-  parts.push("\n=== USER PREFERENCES ===");
-  parts.push(`Language: ${pref.defaultLanguage}`);
-  parts.push(`Tone: ${pref.defaultTone}`);
-  if (pref.defaultAudience) parts.push(`Default audience: ${pref.defaultAudience}`);
-  parts.push(`Include emoji: ${pref.includeEmoji ? "Yes" : "No"}`);
-  if (pref.primaryPlatform) parts.push(`Primary platform: ${pref.primaryPlatform}`);
-  if (pref.primaryGoal) parts.push(`Primary goal: ${pref.primaryGoal}`);
+  parts.push('\n=== USER PREFERENCES ===');
+  if (ctx.preferences) {
+    const p = ctx.preferences;
+    if (p.defaultLanguage) parts.push(`Language: ${p.defaultLanguage}`);
+    if (p.defaultTone) parts.push(`Tone: ${p.defaultTone}`);
+    if (p.defaultAudience) parts.push(`Audience: ${p.defaultAudience}`);
+    if (p.primaryPlatform) parts.push(`Platform: ${p.primaryPlatform}`);
+  } else {
+    parts.push('[No preferences set yet]');
+  }
 
-  // Recent generations for this skill
-  const recentForSkill = memory.recentGenerations
-    .filter((g) => g.skill === skill)
-    .slice(0, 3);
-
-  if (recentForSkill.length > 0) {
-    parts.push(`\n=== RECENT ${skill.toUpperCase()} OUTPUTS (for continuity) ===`);
-    recentForSkill.forEach((g, i) => {
-      parts.push(`[${i + 1}] ${g.generatedContent.substring(0, 200)}...`);
+  parts.push('\n=== RECENT GENERATIONS ===');
+  if (ctx.recentGenerations.length > 0) {
+    ctx.recentGenerations.slice(0, 5).forEach((g, i) => {
+      parts.push(`${i + 1}. [${g.skill || g.actionType || 'copy'}] ${String(g.generatedContent || '').slice(0, 100)}...`);
     });
+  } else {
+    parts.push('[No generations yet]');
   }
 
-  return parts.join("\n");
+  return parts.join('\n');
 }
 
-// ============ HELPERS ============
+/**
+ * Record a generation for learning
+ * Supports both old 2-arg signature: saveGeneration(clerkId, { skill, actionType, inputData, generatedContent })
+ * And new 4-arg signature: saveGeneration(clerkId, type, content, metadata)
+ */
+export async function saveGeneration(
+  clerkId: string,
+  typeOrData: string | Record<string, unknown>,
+  contentOrMetadata?: string | Record<string, unknown>,
+  metadata?: Record<string, unknown>
+): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { clerkId },
+  });
 
-function sanitizeBrandMemory(b: Record<string, unknown>): BrandMemoryData {
-  return {
-    brandName: b.brandName as string | undefined,
-    tagline: b.tagline as string | undefined,
-    voice: b.voice as string | undefined,
-    tone: b.tone as string | undefined,
-    values: (b.values as string[]) ?? [],
-    avoidWords: (b.avoidWords as string[]) ?? [],
-    keyMessages: (b.keyMessages as string[]) ?? [],
-    competitors: (b.competitors as string[]) ?? [],
-    goodExamples: (b.goodExamples as string[]) ?? [],
-    badExamples: (b.badExamples as string[]) ?? [],
-    industry: b.industry as string | undefined,
-    description: b.description as string | undefined,
-  };
+  if (!user) return;
+
+  // Old 2-arg signature
+  if (typeof typeOrData === 'object') {
+    const data = typeOrData as Record<string, unknown>;
+    await prisma.generationHistory.create({
+      data: {
+        userId: user.id,
+        skill: data.skill as string || 'unknown',
+        actionType: data.actionType as string || 'unknown',
+        inputData: typeof data.inputData === 'string' ? data.inputData : JSON.stringify(data.inputData || {}),
+        generatedContent: data.generatedContent as string || '',
+      },
+    });
+    return;
+  }
+
+  // New 4-arg signature
+  await prisma.generationHistory.create({
+    data: {
+      userId: user.id,
+      skill: typeOrData,
+      actionType: typeOrData,
+      generatedContent: typeof contentOrMetadata === 'string' ? contentOrMetadata : JSON.stringify(contentOrMetadata || {}),
+      inputData: JSON.stringify(metadata || {}),
+    },
+  });
 }
 
-function sanitizeProductMemory(p: Record<string, unknown>): ProductMemoryData {
-  return {
-    name: p.name as string,
-    description: p.description as string | undefined,
-    category: p.category as string | undefined,
-    features: (p.features as string[]) ?? [],
-    benefits: (p.benefits as string[]) ?? [],
-    differentiators: (p.differentiators as string[]) ?? [],
-    targetAudience: (p.targetAudience as string[]) ?? [],
-    useCases: (p.useCases as string[]) ?? [],
-    priceRange: p.priceRange as string | undefined,
-    position: p.position as string | undefined,
-  };
-}
+// Alias for backward compatibility
+export const recordGeneration = saveGeneration;
 
-function sanitizePreferences(p: Record<string, unknown>): UserPreferenceData {
-  return {
-    defaultLanguage: (p.defaultLanguage as string) ?? "English",
-    defaultTone: (p.defaultTone as string) ?? "Professional",
-    defaultAudience: p.defaultAudience as string | undefined,
-    preferVariants: (p.preferVariants as boolean) ?? true,
-    preferShortCopy: (p.preferShortCopy as boolean) ?? false,
-    includeEmoji: (p.includeEmoji as boolean) ?? true,
-    primaryPlatform: p.primaryPlatform as string | undefined,
-    primaryGoal: p.primaryGoal as string | undefined,
-  };
-}
+/**
+ * Extract winning patterns from history
+ */
+export function extractWinningPatterns(generations: Record<string, unknown>[]): string {
+  const patterns: string[] = [];
 
-function getDefaultPreferences(): UserPreferenceData {
-  return {
-    defaultLanguage: "English",
-    defaultTone: "Professional",
-    preferVariants: true,
-    preferShortCopy: false,
-    includeEmoji: true,
-  };
+  const byType: Record<string, number> = {};
+  generations.forEach((g) => {
+    const t = (g.skill || g.actionType || 'unknown') as string;
+    byType[t] = (byType[t] || 0) + 1;
+  });
+
+  Object.entries(byType).forEach(([type, count]) => {
+    if (count >= 1) {
+      patterns.push(`- ${type}: ${count} generations recorded`);
+    }
+  });
+
+  return patterns.length > 0 ? patterns.join('\n') : 'Not enough data for pattern analysis';
 }

@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { optimizeForSeo, SeoInput } from "@/lib/skills/ai-seo";
-import { prisma, deductCredits, ensureCreditAccount, refundCredits } from "@/lib/billing/credit-system";
+import { prisma, deductCredits, ensureCreditAccount } from "@/lib/billing/credit-system";
 import { saveGeneration } from "@/lib/memory/memory-service";
 
 const CREDITS_PER_SEO = 15;
@@ -65,8 +65,6 @@ export async function POST(req: NextRequest) {
         userId
       );
     } catch (aiError) {
-      // Refund credits on AI failure
-      await refundCredits(user.id, CREDITS_PER_SEO, `REFUND: AI SEO failed — ${task}`);
       throw aiError;
     }
 

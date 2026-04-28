@@ -2,6 +2,17 @@
 
 AI-powered marketing platform for SMEs — powered by 36 marketing skills.
 
+## ⚠️ Production Readiness
+
+| Component | Status |
+|-----------|--------|
+| Credit System | ✅ Atomic transactions, refund support |
+| Auth | ✅ Clerk + multi-tenant authorization |
+| Rate Limiting | ✅ 120 req/min per IP |
+| Boss API | ✅ HMAC-signed headers (no URL keys) |
+| Stripe Payments | 🔶 Framework ready — needs Stripe keys |
+| Tests | ✅ 10/10 passing |
+
 ## Quick Start
 
 ```bash
@@ -17,6 +28,9 @@ npx prisma migrate dev
 
 # 4. Run dev server
 npm run dev
+
+# 5. Run tests
+npm test
 ```
 
 ## Architecture
@@ -74,10 +88,12 @@ Token Logs → API Costs → Margin = Revenue - Costs
 
 ## Boss (Admin) Dashboard
 
-Access via `/boss` — requires `BOSS_SECRET_KEY` in request header.
+Access via `/boss` — requires HMAC-signed headers.
 
 ```
-curl -H "x-boss-key: your-secret-key" https://yourapp.com/api/boss/margin-summary
+x-boss-key: your-secret-key
+x-boss-timestamp: Unix timestamp (ms)
+x-boss-signature: HMAC-SHA256(key + timestamp)
 ```
 
 Shows:
@@ -86,19 +102,14 @@ Shows:
 - Daily trend of tokens, costs, and margins
 - Model pricing reference
 
-## Deploy to Vercel
-
-```bash
-npm install -g vercel
-vercel
-```
-
 ## Tech Stack
 
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS + shadcn/ui
-- **Database:** PostgreSQL (Prisma ORM)
-- **Auth:** Clerk
-- **AI:** OpenAI SDK
+- **Database:** PostgreSQL (Prisma ORM) + Neon
+- **Auth:** Clerk v7
+- **AI:** OpenAI SDK (MiniMax compatible)
+- **Payments:** Stripe (framework ready)
+- **Monitoring:** Sentry-ready (console fallback)
 - **Deployment:** Vercel

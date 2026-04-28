@@ -1,17 +1,22 @@
 /**
  * Boss Margin Summary API — Hidden from users
  * GET /api/boss/margin-summary
- * Requires x-boss-key header
+ * Requires signed boss headers (x-boss-key, x-boss-timestamp, x-boss-signature)
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/billing/credit-system";
+import { verifyBossRequest } from "@/lib/security/boss-auth";
 
 export async function GET(req: NextRequest) {
-  // Boss auth check
-  const bossKey = req.headers.get("x-boss-key");
-  if (bossKey !== process.env.BOSS_SECRET_KEY) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const keyFromQuery = req.nextUrl.searchParams.get("key");
+  if (keyFromQuery) {
+    return NextResponse.json({ error: "Query key is not supported. Use signed headers." }, { status: 400 });
+  }
+
+  const bossAuth = verifyBossRequest(req);
+  if (!bossAuth.ok) {
+    return NextResponse.json({ error: bossAuth.reason }, { status: 401 });
   }
 
   try {

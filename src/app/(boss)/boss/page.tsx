@@ -1,11 +1,11 @@
 /**
  * Boss Admin Dashboard — Token costs & margins (hidden from users)
- * Access: requires secret key via form or URL ?key= param
+ * Access: requires secret key via form (sent as signed headers)
  */
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { TrendingUp, Cpu, BarChart3, DollarSign, Lock, Eye, EyeOff } from "lucide-react";
 
 interface MarginSummary {
@@ -49,23 +49,41 @@ export default function BossDashboard() {
   const [showKey, setShowKey] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
 
-  // Check URL for key param on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlKey = params.get("key");
-    if (urlKey) {
-      authenticate(urlKey);
-    }
-  }, []);
+  async function buildBossHeaders(secretKey: string) {
+    const timestamp = Date.now().toString();
+    const payload = `${timestamp}.GET./api/boss/margin-summary`;
+    const encodedKey = new TextEncoder().encode(secretKey);
+    const cryptoKey = await window.crypto.subtle.importKey(
+      "raw",
+      encodedKey,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const signatureBytes = await window.crypto.subtle.sign(
+      "HMAC",
+      cryptoKey,
+      new TextEncoder().encode(payload)
+    );
+    const signature = Array.from(new Uint8Array(signatureBytes))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
-  function authenticate(secretKey: string) {
+    return {
+      "x-boss-key": secretKey,
+      "x-boss-timestamp": timestamp,
+      "x-boss-signature": signature,
+    };
+  }
+
+  async function authenticate(secretKey: string) {
     if (!secretKey) return;
     setLoading(true);
     setError(null);
 
-    fetch("/api/boss/margin-summary", {
-      headers: { "x-boss-key": secretKey },
-    })
+    const headers = await buildBossHeaders(secretKey);
+
+    fetch("/api/boss/margin-summary", { headers })
       .then((r) => {
         if (!r.ok) throw new Error("Invalid key or server error");
         return r.json();
@@ -84,7 +102,7 @@ export default function BossDashboard() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    authenticate(key);
+    void authenticate(key);
   }
 
   if (!authenticated) {
@@ -134,7 +152,7 @@ export default function BossDashboard() {
 
           <div className="mt-6 text-center text-xs text-slate-500">
             <p>Your key is never stored — only sent to verify access</p>
-            <p className="mt-1">Alternative: Add ?key=YOUR_KEY to the URL</p>
+            <p className="mt-1">Requests are authenticated via HMAC signed headers.</p>
           </div>
         </div>
       </div>

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { generateCreativeContent } from '@/app/dashboard/product-marketing/skills/creative-content';
 import { CreativeContentRequest } from '@/app/dashboard/product-marketing/types/product-marketing';
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body: CreativeContentRequest = await request.json();
     
     if (!body.adName || !body.platform) {

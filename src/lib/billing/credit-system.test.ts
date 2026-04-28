@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { mockPrismaClient } from "../../test/setup";
 
 // Re-import after mocking
@@ -35,39 +35,44 @@ describe("Credit System", () => {
 
   describe("deductCredits — atomic update", () => {
     it("deducts credits when balance is sufficient", async () => {
-      vi.mocked(mockPrismaClient.creditAccount.update).mockResolvedValue({
-        id: "acc-1",
-        userId: "user-1",
-        balance: 75,
+      vi.mocked(mockPrismaClient.creditAccount.updateMany).mockResolvedValue({ count: 1 });
+      vi.mocked(mockPrismaClient.creditAccount.findUnique)
+        .mockResolvedValueOnce({
+          id: "acc-1",
+          userId: "user-1",
+          balance: 75,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as never);
+      vi.mocked(mockPrismaClient.creditTransaction.create).mockResolvedValue({
+        id: "tx-1",
+        accountId: "acc-1",
+        amount: -10,
+        type: "ACTION_DEDUCT",
+        description: "AI SEO: optimize_content",
         createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      } as never);
 
       const result = await deductCredits("user-1", 10, "AI SEO: optimize_content");
 
       expect(result.success).toBe(true);
       expect(result.remaining).toBe(75);
-      expect(mockPrismaClient.creditAccount.update).toHaveBeenCalledWith({
+      expect(mockPrismaClient.creditAccount.updateMany).toHaveBeenCalledWith({
         where: { userId: "user-1", balance: { gte: 10 } },
+        data: { balance: { decrement: 10 } },
+      });
+      expect(mockPrismaClient.creditTransaction.create).toHaveBeenCalledWith({
         data: {
-          balance: { decrement: 10 },
-          transactions: {
-            create: {
-              amount: -10,
-              type: "ACTION_DEDUCT",
-              description: "AI SEO: optimize_content",
-            },
-          },
+          accountId: "acc-1",
+          amount: -10,
+          type: "ACTION_DEDUCT",
+          description: "AI SEO: optimize_content",
         },
       });
     });
 
     it("fails when balance is insufficient — no update called", async () => {
-      // Prisma throws RecordNotFound when WHERE clause doesn't match
-      vi.mocked(mockPrismaClient.creditAccount.update).mockRejectedValue({
-        code: "P2025",
-        name: "PrismaClientKnownRequestError",
-      });
+      vi.mocked(mockPrismaClient.creditAccount.updateMany).mockResolvedValue({ count: 0 });
       vi.mocked(mockPrismaClient.creditAccount.findUnique).mockResolvedValue({
         id: "acc-1",
         userId: "user-1",
@@ -83,10 +88,7 @@ describe("Credit System", () => {
     });
 
     it("fails when account does not exist", async () => {
-      vi.mocked(mockPrismaClient.creditAccount.update).mockRejectedValue({
-        code: "P2025",
-        name: "PrismaClientKnownRequestError",
-      });
+      vi.mocked(mockPrismaClient.creditAccount.updateMany).mockResolvedValue({ count: 0 });
       vi.mocked(mockPrismaClient.creditAccount.findUnique).mockResolvedValue(null);
 
       const result = await deductCredits("nonexistent", 10, "Test");

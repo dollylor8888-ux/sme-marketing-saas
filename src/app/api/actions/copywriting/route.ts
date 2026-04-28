@@ -53,9 +53,12 @@ export async function POST(req: NextRequest) {
       userId
     );
 
-    // Deduct credits
-    await deductCredits(user.id, CREDITS_PER_COPY, `Copywriting: ${type}`);
-    const newBalance = await getCreditBalance(user.id);
+    // Deduct credits and ensure success
+    const deductResult = await deductCredits(user.id, CREDITS_PER_COPY, `Copywriting: ${type}`);
+    if (!deductResult.success) {
+      return NextResponse.json({ error: "Insufficient credits", balance: deductResult.remaining }, { status: 402 });
+    }
+    const newBalance = deductResult.remaining ?? await getCreditBalance(user.id);
 
     // Save to generation history (memory)
     if (result.output.success && result.output.copy) {

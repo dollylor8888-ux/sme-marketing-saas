@@ -15,13 +15,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await ensureUser(userId);
+    const user = await ensureUser(userId);
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get("workspaceId");
     const productId = searchParams.get("productId");
 
-    const where: Record<string, unknown> = {};
-    if (workspaceId) where.workspaceId = workspaceId;
+    if (!workspaceId) {
+      return NextResponse.json({ error: "workspaceId is required" }, { status: 400 });
+    }
+
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: workspaceId, userId: user.id },
+      select: { id: true },
+    });
+    if (!workspace) {
+      return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+    }
+
+    const where: Record<string, unknown> = { workspaceId };
     if (productId) where.productId = productId;
 
     const campaigns = await prisma.campaign.findMany({

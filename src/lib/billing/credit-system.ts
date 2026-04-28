@@ -3,13 +3,8 @@
  * Handles credit balance checks, deductions, and top-ups
  */
 
-import { PrismaClient } from "@prisma/client";
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-
-export const prisma = globalForPrisma.prisma || new PrismaClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+import { prisma } from "@/lib/db/prisma";
+export { prisma };
 
 // ============ USER FACING (Credit Balance) ============
 
@@ -32,29 +27,65 @@ export async function deductCredits(
   amount: number,
   description: string
 ): Promise<{ success: boolean; remaining: number }> {
-  try {
-    // Atomic: only update if balance >= amount
-    const updated = await prisma.creditAccount.update({
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.creditAccount.updateMany({
       where: {
         userId,
-        balance: { gte: amount }, // Race condition guard
+        balance: { gte: amount },
       },
       data: {
         balance: { decrement: amount },
-        transactions: {
-          create: { amount: -amount, type: "ACTION_DEDUCT", description },
-        },
       },
     });
 
-    return { success: true, remaining: updated.balance };
-  } catch {
-    // Prisma throws PrismaClientKnownRequestError when WHERE clause doesn't match
-    const account = await prisma.creditAccount.findUnique({
+    if (updated.count === 0) {
+      const account = await tx.creditAccount.findUnique({
+        where: { userId },
+      });
+      return { success: false, remaining: account?.balance ?? 0 };
+    }
+
+    const account = await tx.creditAccount.findUnique({
       where: { userId },
+      select: { id: true, balance: true },
     });
-    return { success: false, remaining: account?.balance ?? 0 };
-  }
+
+    if (!account) {
+      throw new Error("Credit account missing after deduction");
+    }
+
+    await tx.creditTransaction.create({
+      data: {
+        accountId: account.id,
+        amount: -amount,
+        type: "ACTION_DEDUCT",
+        description,
+      },
+    });
+
+    return { success: true, remaining: account.balance };
+  });
+}
+
+/**
+ * Refund credits for failed operations.
+ */
+export async function refundCredits(
+  userId: string,
+  amount: number,
+  description: string
+): Promise<{ success: boolean; newBalance: number }> {
+  const account = await prisma.creditAccount.update({
+    where: { userId },
+    data: {
+      balance: { increment: amount },
+      transactions: {
+        create: { amount, type: "REFUND", description },
+      },
+    },
+  });
+
+  return { success: true, newBalance: account.balance };
 }
 
 /**

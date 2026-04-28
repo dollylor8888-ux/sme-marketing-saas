@@ -12,6 +12,26 @@ export type MemoryContext = {
   recentGenerations: Record<string, unknown>[];
 };
 
+function toJsonString(value: unknown): string {
+  if (typeof value === 'string') {
+    try {
+      JSON.parse(value);
+      return value;
+    } catch {
+      return JSON.stringify(value);
+    }
+  }
+  return JSON.stringify(value ?? {});
+}
+
+function parseJsonSafely(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 /**
  * Load all memory context for a user
  */
@@ -42,7 +62,11 @@ export async function loadMemoryContext(clerkId: string): Promise<MemoryContext 
     brandMemory: brandMemory as Record<string, unknown> | null,
     products: products as Record<string, unknown>[],
     preferences: preferences as Record<string, unknown> | null,
-    recentGenerations: generations as Record<string, unknown>[],
+    recentGenerations: generations.map((g) => ({
+      ...g,
+      inputData: parseJsonSafely(g.inputData),
+      generatedContent: parseJsonSafely(g.generatedContent),
+    })) as Record<string, unknown>[],
   };
 }
 
@@ -186,8 +210,8 @@ export async function saveGeneration(
         userId: user.id,
         skill: data.skill as string || 'unknown',
         actionType: data.actionType as string || 'unknown',
-        inputData: typeof data.inputData === 'string' ? data.inputData : JSON.stringify(data.inputData || {}),
-        generatedContent: data.generatedContent as string || '',
+        inputData: toJsonString(data.inputData),
+        generatedContent: toJsonString(data.generatedContent),
       },
     });
     return;
@@ -199,8 +223,8 @@ export async function saveGeneration(
       userId: user.id,
       skill: typeOrData,
       actionType: typeOrData,
-      generatedContent: typeof contentOrMetadata === 'string' ? contentOrMetadata : JSON.stringify(contentOrMetadata || {}),
-      inputData: JSON.stringify(metadata || {}),
+      generatedContent: toJsonString(contentOrMetadata),
+      inputData: toJsonString(metadata),
     },
   });
 }

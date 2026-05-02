@@ -3,8 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Metadata } from "next";
 import "./globals.css";
 import SEOSchemas from "@/app/seo/schemas";
+import ThemeProvider from "@/components/ThemeProvider";
 
-// Force dynamic rendering so ClerkProvider context is available
 export const dynamic = "force-dynamic";
 
 const BASE_URL = "https://sme-marketing-saas.vercel.app";
@@ -81,7 +81,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -92,12 +92,14 @@ export default function RootLayout({
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
     >
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <SEOSchemas />
-          {children}
+          <ThemeProvider>
+            <SEOSchemas />
+            {children}
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

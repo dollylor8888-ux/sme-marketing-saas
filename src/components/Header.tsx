@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { UserButton, useAuth } from "@clerk/nextjs";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Header() {
   const { isSignedIn } = useAuth();
@@ -15,7 +16,8 @@ export default function Header() {
           </div>
           <span className="text-white font-semibold text-lg">Arclion Marketing</span>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Link
             href="/free-marketing-diagnosis"
             className="text-slate-300 hover:text-white transition text-sm"

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Check } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Check, ClipboardCheck } from "lucide-react";
+import { buildMarketingDiagnosis } from "@/lib/marketing/diagnosis";
 
 // Types
 import { Step, Mode, Module, Industry, SellingPoint, CampaignData, ProductInfo } from "./types/product-marketing";
@@ -38,6 +39,28 @@ export default function ProductMarketingPage() {
   const [campaign, setCampaign] = useState<CampaignData | null>(null);
   const [_workspaceId] = useState<string | undefined>(undefined);
   const [completed, setCompleted] = useState(false);
+
+  const handleUrlDiagnosis = useCallback((submittedUrl: string) => {
+    const diagnosis = buildMarketingDiagnosis(submittedUrl);
+
+    setIndustry(diagnosis.type === "restaurant" ? "restaurant" : "ecommerce");
+    setProduct(diagnosis.product);
+    setSellingPoints(diagnosis.sellingPoints);
+    setModule(null);
+    setMode("wizard");
+    setCurrentStep(2);
+  }, []);
+
+  useEffect(() => {
+    const url = new URLSearchParams(window.location.search).get("url");
+    if (!url) return;
+
+    const timer = window.setTimeout(() => {
+      handleUrlDiagnosis(url);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [handleUrlDiagnosis]);
 
   // Switch industry template
   const handleIndustryChange = (newIndustry: Industry) => {
@@ -79,9 +102,11 @@ export default function ProductMarketingPage() {
     return (
       <div className="min-h-screen">
         <div className="max-w-xl mx-auto px-4 py-12 text-center">
-          <div className="text-5xl lg:text-6xl mb-6">🎉</div>
+          <div className="w-16 h-16 mx-auto mb-6 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+            <ClipboardCheck className="w-8 h-8 text-emerald-300" />
+          </div>
           <h1 className="text-2xl lg:text-3xl font-bold text-white mb-4">Marketing Plan 完成！</h1>
-          <p className="text-slate-400 mb-8">你的產品營銷計劃已生成完畢</p>
+          <p className="text-slate-400 mb-8">你的香港 Meta/IG 廣告方案已生成完畢</p>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-3 text-left">
             <div className="flex items-center gap-3"><Check className="w-5 h-5 text-green-400" /><span className="text-slate-300">產品分析報告</span></div>
             <div className="flex items-center gap-3"><Check className="w-5 h-5 text-green-400" /><span className="text-slate-300">{sellingPoints.filter(p => p.confirmed).length} 個核心賣點</span></div>
@@ -108,8 +133,8 @@ export default function ProductMarketingPage() {
         {/* Header */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">Product Marketing Intelligence</h1>
-            <p className="text-slate-400 text-sm lg:text-base">從 URL 分析到完整廣告計劃 + 成效追蹤</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">Campaign Studio</h1>
+            <p className="text-slate-400 text-sm lg:text-base">URL diagnosis → 香港受眾 → Meta/IG 廣告方案 → 成效回顧</p>
           </div>
           <div className="flex items-center gap-3">
             <IndustryToggle industry={industry} onChange={handleIndustryChange} />
@@ -120,7 +145,7 @@ export default function ProductMarketingPage() {
         <StepIndicator current={currentStep} total={7} />
 
         <div className="mt-8">
-          {currentStep === 1 && <Step1_URLInput onNext={(u) => { console.log(u); handleNext(); }} />}
+          {currentStep === 1 && <Step1_URLInput onNext={handleUrlDiagnosis} />}
           {currentStep === 2 && <Step2_Analysis product={product} onNext={handleNext} onBack={handleBack} />}
           {currentStep === 3 && <Step3_SellingPoints initialPoints={sellingPoints} onNext={(points) => { setSellingPoints(points); handleNext(); }} onBack={handleBack} />}
           {currentStep === 4 && <Step4_Optimization onNext={handleNext} onBack={handleBack} />}
@@ -138,8 +163,8 @@ export default function ProductMarketingPage() {
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">Product Marketing - 快速模式</h1>
-          <p className="text-slate-400 text-sm lg:text-base">直接選擇你想使用的功能模組</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">Campaign Studio - 進階模組</h1>
+          <p className="text-slate-400 text-sm lg:text-base">已有診斷或歷史資料時，才直接進入個別模組</p>
         </div>
         <div className="flex items-center gap-3">
           <IndustryToggle industry={industry} onChange={handleIndustryChange} />

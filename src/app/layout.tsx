@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     template: "%s | Arclion Marketing",
   },
   description:
-    "Empower your business with 36 AI marketing skills. Create content, optimize SEO, and track analytics — all in one place. Start free with 100 credits.",
+    "Turn a product URL into Hong Kong-ready copy, SEO suggestions, Meta/Instagram ad plans, and performance recommendations. Start free with 100 credits.",
   keywords: [
     "AI marketing",
     "marketing automation",
@@ -43,12 +43,12 @@ export const metadata: Metadata = {
   publisher: "Arclion",
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "en_HK",
     url: BASE_URL,
     siteName: "Arclion Marketing",
     title: "Arclion Marketing | AI-Powered SME Marketing Platform",
     description:
-      "Empower your business with 36 AI marketing skills. Create content, optimize SEO, and track analytics — all in one place.",
+      "AI marketing planning for Hong Kong SMEs: product analysis, copy, SEO, Meta/Instagram campaign plans, and performance recommendations.",
     images: [
       {
         url: "/og-image.png",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Arclion Marketing | AI-Powered SME Marketing Platform",
     description:
-      "Create content, optimize SEO, and track analytics — powered by 36 AI marketing skills.",
+      "Create Hong Kong-ready copy, SEO suggestions, and Meta/Instagram campaign plans from one product URL.",
     images: ["/og-image.png"],
   },
   robots: {

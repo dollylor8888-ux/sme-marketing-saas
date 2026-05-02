@@ -1,17 +1,54 @@
 # Arclion Marketing SaaS
 
-AI-powered marketing platform for SMEs — powered by 36 marketing skills.
+Arclion is a Hong Kong SME marketing workflow product. The current MVP is intentionally narrow:
 
-## ⚠️ Production Readiness
+1. Free diagnosis: a visitor pastes a product or website URL and receives a short Hong Kong market diagnosis.
+2. Campaign generation: the diagnosis becomes a Meta/Instagram campaign plan with audience angles, selling points, Traditional Chinese/Cantonese ad copy, and HKD budget guidance.
+3. Performance review: the user can later upload campaign data so Arclion can recommend the next iteration.
 
-| Component | Status |
-|-----------|--------|
-| Credit System | ✅ Atomic transactions, refund support |
-| Auth | ✅ Clerk + multi-tenant authorization |
-| Rate Limiting | ✅ 120 req/min per IP |
-| Boss API | ✅ HMAC-signed headers (no URL keys) |
-| Stripe Payments | 🔶 Framework ready — needs Stripe keys |
-| Tests | ✅ 10/10 passing |
+The product direction is diagnosis first, tools later. The goal is to acquire users through a useful free report, then convert the ones who trust the diagnosis into paid campaign planning.
+
+## Product Model
+
+| Layer | Purpose | User Value |
+|-------|---------|------------|
+| Free marketing diagnosis | Acquisition entry point | Quick positioning, audience, and conversion-gap feedback from a URL |
+| Campaign Studio | Core paid workflow | URL diagnosis into HK-ready Meta/IG campaign structure and ad copy |
+| Credits and billing | Monetization | HKD plans and credit packs for repeat campaign generation |
+| Performance review | Retention loop | Use campaign results to decide the next creative and budget move |
+
+## Current Pricing
+
+| Plan | Price | Credits |
+|------|-------|---------|
+| Free | HK$0 | 100 welcome credits |
+| Starter | HK$88/month | 1,000 credits |
+| Growth | HK$288/month | 4,000 credits |
+| Agency | HK$1,280+/month | 25,000+ credits |
+
+Credit packs are also available for one-off top ups.
+
+## Key Routes
+
+| Route | Description |
+|-------|-------------|
+| `/free-marketing-diagnosis` | Public URL input and free diagnosis entry |
+| `/free-marketing-diagnosis/result?url=...` | Public diagnosis result and campaign-plan CTA |
+| `/dashboard` | Campaign-oriented dashboard overview |
+| `/dashboard/product-marketing` | Campaign Studio wizard |
+| `/dashboard/credits` | HKD plan and credit pack management |
+| `/pricing` | Public HKD pricing page |
+
+## User Flow
+
+```text
+Visitor pastes URL
+  -> Free marketing diagnosis
+  -> Sign up when they want the full plan
+  -> Campaign Studio generates audience, selling points, structure, copy, and budget
+  -> User runs ads
+  -> User uploads results for review
+```
 
 ## Quick Start
 
@@ -21,7 +58,7 @@ npm install
 
 # 2. Set up environment
 cp .env.example .env
-# Fill in your API keys
+# Fill in Clerk, database, AI, and payment keys as needed
 
 # 3. Set up database
 npx prisma migrate dev
@@ -33,83 +70,68 @@ npm run dev
 npm test
 ```
 
+## Verification
+
+```bash
+npx tsc --noEmit
+npm test
+npm run lint
+```
+
+Current status:
+
+| Check | Status |
+|-------|--------|
+| TypeScript | Passing |
+| Tests | Passing, 13 tests |
+| Lint | Existing repo lint debt remains |
+
+Known lint debt currently includes CommonJS helper scripts, a test setup `any`, an empty Clerk interface, and several existing unused-variable warnings.
+
 ## Architecture
 
-```
+```text
 src/
 ├── app/
-│   ├── (auth)/              # Clerk auth pages
-│   ├── (dashboard)/         # User dashboard
-│   │   ├── copywriting/     # Copywriting tool
-│   │   ├── seo/             # AI SEO tool
-│   │   └── credits/         # Credit management
-│   └── api/
-│       ├── actions/         # Skill APIs (copywriting, ai-seo)
-│       └── credits/         # Credit system
+│   ├── free-marketing-diagnosis/
+│   │   ├── page.tsx
+│   │   └── result/page.tsx
+│   ├── dashboard/
+│   │   ├── page.tsx
+│   │   ├── product-marketing/
+│   │   └── credits/
+│   ├── api/
+│   │   ├── ad-direction/
+│   │   ├── creative-content/
+│   │   ├── product-analysis/
+│   │   └── credits/
+│   └── pricing/
 ├── lib/
-│   ├── billing/            # Hidden from users
-│   │   ├── credit-system.ts     # User-facing credit ops
-│   │   ├── token-tracker.ts     # Token usage (Boss only)
-│   │   └── margin-calculator.ts # Profit tracking (Boss only)
-│   ├── skills/             # Marketing skills
-│   │   ├── copywriting/
-│   │   └── ai-seo/
-│   └── db/                 # Prisma schema
+│   ├── billing/
+│   │   ├── credit-system.ts
+│   │   ├── margin-calculator.ts
+│   │   └── pricing.ts
+│   ├── marketing/
+│   │   ├── diagnosis.ts
+│   │   └── diagnosis.test.ts
+│   ├── skills/
+│   └── db/
 ```
 
-## Key Features
+## Implementation Notes
 
-| Feature | Description |
-|---------|-------------|
-| **Credit System** | Users top up credits to use marketing tools |
-| **Token Tracker** | Backend tracks actual API costs per call |
-| **Margin Calculator** | Hidden dashboard shows profit per action |
-| **Skills** | Copywriting, AI SEO, Analytics (expandable to 36) |
-
-## User Flow
-
-```
-Sign Up → 100 Free Credits → Use Tool → Deduct Credits → (Optional: Top Up)
-```
-
-## Boss (Admin) Flow
-
-```
-Token Logs → API Costs → Margin = Revenue - Costs
-(Dashboard hidden from users, accessible via secret route)
-```
-
-## Adding More Skills
-
-1. Create skill in `src/lib/skills/<skill-name>/`
-2. Add API route in `src/app/api/actions/<skill-name>/`
-3. Update `SkillCreditCost` in `src/lib/billing/models.ts`
-4. Add link in dashboard sidebar
-
-## Boss (Admin) Dashboard
-
-Access via `/boss` — requires HMAC-signed headers.
-
-```
-x-boss-key: your-secret-key
-x-boss-timestamp: Unix timestamp (ms)
-x-boss-signature: HMAC-SHA256(key + timestamp)
-```
-
-Shows:
-- Total revenue, API costs, and margin
-- Per-skill profitability breakdown
-- Daily trend of tokens, costs, and margins
-- Model pricing reference
+- `src/lib/marketing/diagnosis.ts` is the shared MVP diagnosis helper. It normalizes a URL, infers a simple business type, and produces the free diagnosis plus campaign-plan preview.
+- `src/app/free-marketing-diagnosis/result/page.tsx` uses the same helper as the dashboard so the public report and paid workflow stay aligned.
+- `src/app/dashboard/product-marketing/page.tsx` accepts a `url` query parameter and opens the Campaign Studio at the diagnosis step.
+- Real crawling and AI product analysis can replace the deterministic helper later without changing the user journey.
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS + shadcn/ui
-- **Database:** PostgreSQL (Prisma ORM) + Neon
-- **Auth:** Clerk v7
-- **AI:** OpenAI SDK (MiniMax compatible)
-- **Payments:** Stripe (framework ready)
-- **Monitoring:** Sentry-ready (console fallback)
-- **Deployment:** Vercel
+- Framework: Next.js 16 App Router
+- Language: TypeScript
+- Styling: Tailwind CSS
+- Auth: Clerk
+- Database: PostgreSQL with Prisma
+- AI: OpenAI SDK compatible provider setup
+- Payments: Stripe framework
+- Tests: Vitest

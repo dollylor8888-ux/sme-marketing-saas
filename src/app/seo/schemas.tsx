@@ -1,13 +1,13 @@
-import { Metadata } from "next";
 import { WebSite, Organization, FAQPage, SoftwareApplication } from "schema-dts";
 import { JsonLd } from "@/components/JsonLd";
+import { MARKETING_PLANS } from "@/lib/billing/pricing";
 
 const websiteJsonLd: WebSite = {
   "@type": "WebSite",
   name: "Arclion Marketing",
   url: "https://sme-marketing-saas.vercel.app",
   description:
-    "AI-powered SME marketing platform with 36 proven marketing skills. Create content, optimize SEO, and track analytics — no marketing team required.",
+    "AI marketing planning for Hong Kong SMEs. Create copy, SEO suggestions, Meta/Instagram ad plans, and performance recommendations from one product URL.",
   publisher: {
     "@type": "Organization",
     name: "Arclion",
@@ -20,43 +20,21 @@ const organizationJsonLd: Organization = {
   name: "Arclion",
   url: "https://sme-marketing-saas.vercel.app",
   description:
-    "AI-powered marketing platform for growing SMEs. Create content, optimize for SEO, run analytics — powered by 36 proven marketing skills.",
-  areaServed: "Worldwide",
+    "AI-powered marketing platform for Hong Kong SMEs running ecommerce, retail, F&B, and service campaigns.",
+  areaServed: "Hong Kong",
   hasOfferCatalog: {
     "@type": "OfferCatalog",
     name: "Arclion Marketing Plans",
-    itemListElement: [
-      {
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Service",
-          name: "Starter",
-          description: "100 free credits",
-        },
-        price: "0",
-        priceCurrency: "USD",
+    itemListElement: MARKETING_PLANS.map((plan) => ({
+      "@type": "Offer",
+      itemOffered: {
+        "@type": "Service",
+        name: plan.name,
+        description: plan.credits,
       },
-      {
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Service",
-          name: "Pro",
-          description: "1,000 credits/month",
-        },
-        price: "9",
-        priceCurrency: "USD",
-      },
-      {
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Service",
-          name: "Unlimited",
-          description: "Unlimited credits/month",
-        },
-        price: "29",
-        priceCurrency: "USD",
-      },
-    ],
+      price: plan.id === "agency" ? "1280" : plan.price.replace("HK$", ""),
+      priceCurrency: "HKD",
+    })),
   },
 };
 
@@ -68,17 +46,12 @@ const softwareAppJsonLd: SoftwareApplication = {
   offers: {
     "@type": "AggregateOffer",
     lowPrice: "0",
-    highPrice: "29",
-    priceCurrency: "USD",
-    offerCount: 3,
-  },
-  aggregateRating: {
-    "@type": "AggregateRating",
-    ratingValue: "4.8",
-    reviewCount: "127",
+    highPrice: "1280",
+    priceCurrency: "HKD",
+    offerCount: MARKETING_PLANS.length,
   },
   description:
-    "AI-powered marketing platform with 36 proven marketing skills. Create content, optimize SEO, and track analytics.",
+    "AI marketing platform for Hong Kong SMEs that helps generate campaign copy, SEO suggestions, and Meta/Instagram ad plans.",
 };
 
 const faqJsonLd: FAQPage = {
@@ -89,7 +62,7 @@ const faqJsonLd: FAQPage = {
       name: "What is Arclion Marketing?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Arclion Marketing is an AI-powered marketing platform for SMEs. It provides 36 proven marketing skills including copywriting, AI SEO, analytics, social content, email sequences, and A/B testing — all in one platform.",
+        text: "Arclion Marketing helps Hong Kong SMEs turn product URLs into copy, SEO suggestions, Meta/Instagram ad plans, and performance recommendations.",
       },
     },
     {
@@ -97,7 +70,7 @@ const faqJsonLd: FAQPage = {
       name: "How much do the plans cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Starter is free with 100 credits. Pro costs $9/month for 1,000 credits. Unlimited costs $29/month for unlimited credits.",
+        text: "Plans start free with 100 welcome credits. Paid plans are priced in HKD, starting from HK$88 per month for Starter and HK$288 per month for Growth.",
       },
     },
     {
@@ -105,7 +78,7 @@ const faqJsonLd: FAQPage = {
       name: "What can I do with the free credits?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "With 100 free credits, you can try all features including copywriting, AI SEO optimization, social media content creation, and email sequences before committing to a paid plan.",
+        text: "With 100 free credits, you can test starter copywriting and AI SEO tasks and preview the free marketing diagnosis workflow.",
       },
     },
     {

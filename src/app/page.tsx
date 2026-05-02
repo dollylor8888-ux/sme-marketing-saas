@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Link from "next/link";
+import { MARKETING_PLANS } from "@/lib/billing/pricing";
 
 export default function Home() {
   return (
@@ -22,8 +23,8 @@ export default function Home() {
         </h1>
 
         <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-12">
-          Create content, optimize for SEO, run analytics — powered by 36 proven marketing skills.
-          No marketing team required.
+          Turn a product URL into Hong Kong-ready copy, SEO suggestions, Meta/Instagram ad plans,
+          and performance recommendations. No marketing team required.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -67,24 +68,22 @@ export default function Home() {
 
         {/* Pricing */}
         <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          {[
-            { name: "Starter", credits: 100, price: "Free", desc: "Perfect for trying out" },
-            { name: "Pro", credits: "1,000", price: "$9", desc: "/month — For regular marketers" },
-            { name: "Unlimited", credits: "Unlimited", price: "$29", desc: "/month — Power users" },
-          ].map((plan) => (
+          {MARKETING_PLANS.slice(0, 3).map((plan) => (
             <div
-              key={plan.name}
+              key={plan.id}
               className="p-8 bg-slate-800/50 border border-slate-700 rounded-2xl"
             >
               <h3 className="text-white font-semibold text-lg mb-2">{plan.name}</h3>
               <div className="text-4xl font-bold text-white mb-1">{plan.price}</div>
-              <p className="text-slate-400 text-sm mb-4">{plan.credits} credits {plan.name !== "Starter" && "/mo"}</p>
-              <p className="text-slate-400 text-sm">{plan.desc}</p>
+              <p className="text-slate-400 text-sm mb-4">
+                {plan.credits}
+              </p>
+              <p className="text-slate-400 text-sm min-h-12">{plan.audience}</p>
               <Link
-                href="/sign-up"
+                href={plan.href}
                 className="mt-6 block w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium text-center transition"
               >
-                Get Started
+                {plan.cta}
               </Link>
             </div>
           ))}

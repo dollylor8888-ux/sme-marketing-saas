@@ -1,13 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Coins, Loader2, Check, Gift, Users, Copy, Share2, TrendingUp } from "lucide-react";
-
-const CREDIT_PACKAGES = [
-  { credits: 100, price: 5, label: "Starter Pack" },
-  { credits: 500, price: 20, label: "Value Pack" },
-  { credits: 1000, price: 35, label: "Pro Pack" },
-];
+import { CREDIT_PACKAGES, formatHkd } from "@/lib/billing/pricing";
 
 interface ReferralStats {
   referralCode: string;
@@ -27,11 +22,7 @@ export default function CreditsPage() {
   const [referralInput, setReferralInput] = useState("");
   const [referralMessage, setReferralMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [creditsRes, referralRes] = await Promise.all([
         fetch("/api/credits"),
@@ -52,9 +43,15 @@ export default function CreditsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handlePurchase = async (pkg: typeof CREDIT_PACKAGES[0]) => {
+  useEffect(() => {
+    // Initial client-side balance load; this page stays interactive for purchases and referrals.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData();
+  }, [fetchData]);
+
+  const handlePurchase = async (pkg: (typeof CREDIT_PACKAGES)[number]) => {
     setPurchasing(pkg.label);
     // Stripe integration would go here
     await new Promise((r) => setTimeout(r, 1500));
@@ -129,7 +126,7 @@ export default function CreditsPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Credits</h1>
-        <p className="text-slate-400">Top up your credits to continue using AI marketing tools</p>
+        <p className="text-slate-400">Top up in HKD when a campaign needs extra AI work</p>
       </div>
 
       {/* Current Balance */}
@@ -159,7 +156,8 @@ export default function CreditsPage() {
             <div className="text-3xl font-bold text-cyan-400 mb-4">
               {pkg.credits.toLocaleString()} <span className="text-lg text-slate-400 font-normal">credits</span>
             </div>
-            <div className="text-2xl font-bold text-white mb-6">${pkg.price}</div>
+            <p className="text-slate-400 text-sm mb-4 min-h-10">{pkg.note}</p>
+            <div className="text-2xl font-bold text-white mb-6">{formatHkd(pkg.priceHkd)}</div>
             <button
               onClick={() => handlePurchase(pkg)}
               disabled={purchasing === pkg.label || purchased === pkg.label}
@@ -180,7 +178,7 @@ export default function CreditsPage() {
               )}
             </button>
             <div className="text-center text-slate-500 text-xs mt-3">
-              ${(pkg.price / pkg.credits).toFixed(3)} per credit
+              HK${(pkg.priceHkd / pkg.credits).toFixed(2)} per credit
             </div>
           </div>
         ))}

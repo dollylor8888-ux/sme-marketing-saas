@@ -11,6 +11,14 @@
 import OpenAI from "openai";
 import { CopyTypeDefinition, COPY_TYPES, COPY_TYPE_LIST } from "./types/copy-types";
 import { BrandVoiceInput, buildBrandVoiceContext } from "./types/brand-voice";
+import type {
+  CopywritingModeInput,
+  CopywritingModeId,
+  CopywritingModeOutput,
+} from "./types/modes";
+import { COPYWRITING_MODES } from "./types/modes";
+import { buildModeSystemPrompt, buildModeUserPrompt } from "./prompts";
+import { validateOutputByMode } from "./validators";
 
 const provider = process.env.AI_PROVIDER ?? "openai";
 
@@ -324,4 +332,102 @@ export function getCopyTypesByCategory(): Record<string, CopyTypeDefinition[]> {
     acc[ct.category].push(ct);
     return acc;
   }, {} as Record<string, CopyTypeDefinition[]>);
+}
+
+// ============ NEW MODE-BASED GENERATION ============
+
+export interface GenerateCopywritingResult {
+  success: boolean;
+  mode: CopywritingModeId;
+  output?: CopywritingModeOutput;
+  error?: string;
+}
+
+/**
+ * Mode-based copywriting generation
+ * 
+ * Supports 3 modes:
+ * 1. ad_copy_set        — FB/IG ad: headline + primary text + description + CTA
+ * 2. campaign_direction — Marketing direction + angles + budget guidance
+ * 3. product_angle_explorer — Selling points, pain points, hooks
+ * 
+ * NOTE: This function does NOT deduct credits. The calling route must do it on success.
+ */
+export async function generateCopywriting(
+  input: CopywritingModeInput
+): Promise<GenerateCopywritingResult> {
+  const { mode } = input;
+
+  // 1. Validate mode
+  if (!COPYWRITING_MODES[mode]) {
+    return {
+      success: false,
+      mode,
+      error: `Unknown mode: ${mode}. Available modes: ${Object.keys(COPYWRITING_MODES).join(", ")}`
+    };
+  }
+
+  // 2. Build prompts
+  const systemPrompt = buildModeSystemPrompt(mode, input);
+  const userPrompt = buildModeUserPrompt(mode, input);
+
+  // 3. Generate with AI
+  try {
+    const completion = await openai.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 2500,
+    });
+
+    const rawOutput = completion.choices[0]?.message?.content;
+    if (!rawOutput) {
+      return { success: false, mode, error: "No response from AI" };
+    }
+
+    // 4. Parse JSON
+    let parsed: unknown;
+    try {
+      let cleaned = rawOutput.trim();
+      if (cleaned.startsWith("```json")) {
+        cleaned = cleaned.replace(/^```json\n?/, "").replace(/\n?```$/, "");
+      } else if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```\n?/, "").replace(/\n?```$/, "");
+      }
+      parsed = JSON.parse(cleaned);
+    } catch {
+      return {
+        success: false,
+        mode,
+        error: `JSON parse error: ${rawOutput.slice(0, 200)}`
+      };
+    }
+
+    // 5. Validate output by mode
+    const validation = validateOutputByMode(mode, parsed);
+    if (!validation.valid) {
+      return {
+        success: false,
+        mode,
+        error: `Output validation failed: ${validation.error}`
+      };
+    }
+
+    return {
+      success: true,
+      mode,
+      output: parsed as CopywritingModeOutput
+    };
+
+  } catch (error) {
+    console.error("[generateCopywriting] Error:", error);
+    return {
+      success: false,
+      mode,
+      error: error instanceof Error ? error.message : "Generation failed"
+    };
+  }
 }

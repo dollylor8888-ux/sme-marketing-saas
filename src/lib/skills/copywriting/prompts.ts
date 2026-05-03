@@ -116,6 +116,16 @@ export function buildModeUserPrompt(
     tone: input.tone ?? "",
     language: input.language ?? "traditional_chinese",
     extra: input.extra ?? "",
+    // Extended product marketing context
+    productOverview: input.productOverview ?? "",
+    differentiators: input.differentiators ?? "",
+    customerLanguage: input.customerLanguage ?? "",
+    objections: input.objections ?? "",
+    proofPoints: input.proofPoints?.join("；") ?? "",
+    goals: input.goals ?? "",
+    wordsToUse: input.wordsToUse?.join("；") ?? "",
+    wordsToAvoid: input.wordsToAvoid?.join("；") ?? "",
+    // Brand voice
     brandVoice: input.brandVoice
       ? buildBrandVoiceContext(input.brandVoice)
       : "",

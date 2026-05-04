@@ -23,11 +23,26 @@ import { validateOutputByMode } from "./validators";
 const provider = process.env.AI_PROVIDER ?? "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: provider === "minimax" ? "https://api.minimax.chat/v1" : undefined,
+  apiKey:
+    provider === "minimax-proxy"
+      ? process.env.AI_PROXY_KEY ?? "proxy-key-not-set"
+      : provider === "minimax"
+      ? process.env.OPENAI_API_KEY
+      : process.env.OPENAI_API_KEY,
+  baseURL:
+    provider === "minimax"
+      ? "https://api.minimax.chat/v1"
+      : provider === "minimax-proxy"
+      ? (process.env.AI_PROXY_URL ?? "http://localhost:3456") + "/v1"
+      : undefined,
 });
 
-export const DEFAULT_MODEL = provider === "minimax" ? "abab6-chat" : "gpt-4o-mini";
+export const DEFAULT_MODEL =
+  provider === "minimax"
+    ? "abab6-chat"
+    : provider === "minimax-proxy"
+    ? (process.env.AI_PROXY_MODEL ?? "MiniMax-M2.7")
+    : "gpt-4o-mini";
 
 // ============ INPUT/OUTPUT TYPES ============
 

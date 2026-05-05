@@ -5,7 +5,6 @@
  * Handles AI generation with MiniMax/MiniMax-Proxy/OpenAI
  */
 
-import OpenAI from "openai";
 import { PRODUCT_ANALYSIS_SYSTEM_PROMPT, buildProductAnalysisUserPrompt, OUTPUT_SCHEMA_INSTRUCTION } from "./prompts";
 import type { ProductAnalysisInput, ProductAnalysisOutput, TokenUsage } from "./types";
 
@@ -13,27 +12,86 @@ import type { ProductAnalysisInput, ProductAnalysisOutput, TokenUsage } from "./
 
 const provider = process.env.AI_PROVIDER ?? "openai";
 
-const openai = new OpenAI({
-  apiKey:
-    provider === "minimax-proxy"
-      ? process.env.AI_PROXY_KEY ?? "proxy-key-not-set"
-      : provider === "minimax"
-      ? process.env.OPENAI_API_KEY
-      : process.env.OPENAI_API_KEY,
-  baseURL:
-    provider === "minimax"
-      ? "https://api.minimax.chat/v1"
-      : provider === "minimax-proxy"
-      ? (process.env.AI_PROXY_URL ?? "http://localhost:3456") + "/v1"
-      : undefined,
-});
-
 export const DEFAULT_MODEL =
   provider === "minimax"
     ? "abab6-chat"
     : provider === "minimax-proxy"
     ? (process.env.AI_PROXY_MODEL ?? "MiniMax-M2.7")
     : "gpt-4o-mini";
+
+const MINIMAX_BASE_URL = "https://api.minimax.io";
+
+// ============ CUSTOM FETCH FOR MINIMAX-PROXY ============
+
+/**
+ * Call AI API using native fetch
+ * Handles both OpenAI-compatible and MiniMax-Proxy (X-API-Key header)
+ */
+async function callAI({
+  model,
+  messages,
+  temperature = 0.7,
+  maxTokens = 2000,
+}: {
+  model: string;
+  messages: { role: string; content: string }[];
+  temperature?: number;
+  maxTokens?: number;
+}): Promise<{ content: string; usage?: { prompt_tokens: number; completion_tokens: number } }> {
+  let url: string;
+  let headers: Record<string, string>;
+
+  if (provider === "minimax-proxy") {
+    // Use local proxy server
+    const proxyUrl = process.env.AI_PROXY_URL ?? "http://localhost:3456";
+    url = `${proxyUrl}/v1/chat/completions`;
+    headers = {
+      "Content-Type": "application/json",
+      "X-API-Key": process.env.AI_PROXY_KEY ?? "proxy-key-not-set",
+      "Authorization": `Bearer ${process.env.AI_PROXY_KEY ?? "proxy-key-not-set"}`,
+    };
+  } else if (provider === "minimax") {
+    // Direct MiniMax API
+    url = `${MINIMAX_BASE_URL}/v1/chat/completions`;
+    headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+    };
+  } else {
+    // OpenAI
+    url = "https://api.openai.com/v1/chat/completions";
+    headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+    };
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`${response.status} ${response.statusText}: ${error}`);
+  }
+
+  const data = await response.json();
+  return {
+    content: data.choices?.[0]?.message?.content ?? "",
+    usage: data.usage ? {
+      prompt_tokens: data.usage.prompt_tokens ?? 0,
+      completion_tokens: data.usage.completion_tokens ?? 0,
+    } : undefined,
+  };
+}
 
 // ============ MAIN GENERATION FUNCTION ============
 
@@ -54,19 +112,18 @@ export async function generateProductAnalysis(
   const userPrompt = buildProductAnalysisUserPrompt(input);
 
   try {
-    const response = await openai.chat.completions.create({
+    const result = await callAI({
       model: DEFAULT_MODEL,
       messages: [
         { role: "system", content: PRODUCT_ANALYSIS_SYSTEM_PROMPT },
         { role: "user", content: userPrompt + "\n\n" + OUTPUT_SCHEMA_INSTRUCTION },
       ],
       temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: "json_object" },
+      maxTokens: 2000,
     });
 
-    const rawOutput = response.choices[0]?.message?.content ?? "";
-    const usage = response.usage;
+    const rawOutput = result.content;
+    const usage = result.usage;
 
     // Parse JSON output
     let parsed: Partial<ProductAnalysisOutput>;
